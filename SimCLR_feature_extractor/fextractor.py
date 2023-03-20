@@ -1,4 +1,5 @@
 import cv2
+import numpy as np
 import torch 
 import torch.nn as nn
 import torchvision.models as models
@@ -90,7 +91,12 @@ img2 = img2.unsqueeze(0)
 img2 = img2.to(device).float()
 feature2 = new_model(img2)
 
+loss = nn.MSELoss()
+output = loss(feature1, feature2)
+
+
 print(feature1)
 print(feature2)
+print(output)
 # breakpoint()
 print('model successfuly loaded.')
