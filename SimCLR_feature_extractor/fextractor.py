@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torchvision.models as models
 from torchsummary import summary
-from exceptions.exceptions import InvalidBackboneError
+# from exceptions.exceptions import InvalidBackboneError
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print("Using device:", device)
 
@@ -76,14 +76,14 @@ model.load_state_dict(checkpoint['model_state_dict'], strict=False)
 new_model = FeatureExtractor(model)
 
 model.to(device)
-img1 = cv2.imread('/home/sdastani/projects/rrg-ebrahimi/sdastani/SSL_video/SimCLR feature extractor/001.png')
+img1 = cv2.imread('/home/sdastani/projects/rrg-ebrahimi/sdastani/SSL_video/SimCLR_feature_extractor/frame0.jpg')
 img1 = torch.from_numpy(img1)
 img1 = img1.permute(2, 0, 1)
 img1 = img1.unsqueeze(0)
 img1 = img1.to(device).float()
 feature1 = new_model(img1)
 
-img2 = cv2.imread('/home/sdastani/projects/rrg-ebrahimi/sdastani/SSL_video/SimCLR feature extractor/002.png')
+img2 = cv2.imread('/home/sdastani/projects/rrg-ebrahimi/sdastani/SSL_video/SimCLR_feature_extractor/frame1.jpg')
 img2 = torch.from_numpy(img2)
 img2 = img2.permute(2, 0, 1)
 img2 = img2.unsqueeze(0)
