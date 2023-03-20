@@ -4,6 +4,6 @@ The purpose here is to check if current image-based SSL methods have temporal co
 
 ## Instructions to setup the project
 
-- First download the pretrained model and change the directory of checkpoint in `fextractor.py` file.
+- First download the pretrained model (using this repository: `https://github.com/sthalles/SimCLR`) and change the directory of checkpoint in `fextractor.py` file.
 - Then change two frame's direcotry in the code.
 - Finally run the code using `python fextractor.py > out.txt` and analyse the result in `out.txt` file.
