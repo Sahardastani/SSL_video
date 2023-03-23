@@ -1,6 +1,7 @@
 import torch 
 import torch.nn as nn
 
+# Extract feature from an input image
 class FeatureExtractor(nn.Module):
   def __init__(self, model):
     super(FeatureExtractor, self).__init__()
