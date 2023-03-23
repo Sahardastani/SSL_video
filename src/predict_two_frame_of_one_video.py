@@ -1,5 +1,6 @@
 import os
 import cv2
+import argparse
 import warnings
 import torch 
 import torch.nn as nn
@@ -12,23 +13,33 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print("Using device:", device)
 warnings.filterwarnings('ignore')
 
-config = {
-    'pre_trained_model':{'dir': '/home/sdastani/scratch/resnet18/checkpoint_0100.pth.tar'},
-    'frames':{'dir': '/home/sdastani/scratch/ucf101/subset/v_IceDancing_g01_c01.avi'}    
-}
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--pre_trained_model', 
+                    type=str, 
+                    default='/home/sdastani/scratch/resnet18/checkpoint_0100.pth.tar', 
+                    help='The directory of pre-trained model.')
+
+parser.add_argument('--frames', 
+                    type=str, 
+                    default='./frames/v_IceDancing_g01_c01.avi', #'/home/sdastani/scratch/ucf101/subset/v_IceDancing_g01_c01.avi', 
+                    help='The direcotry of folder containing frames of each video.')
+
+args = parser.parse_args()
+
 
 # load the model from checkpoint
 model = ResNetSimCLR(base_model='resnet18', out_dim=128)
-torch.save({'model_state_dict': model.state_dict()}, config['pre_trained_model']['dir'])
-checkpoint = torch.load(config['pre_trained_model']['dir'], map_location = device)
+torch.save({'model_state_dict': model.state_dict()}, args.pre_trained_model)
+checkpoint = torch.load(args.pre_trained_model, map_location = device)
 model.load_state_dict(checkpoint['model_state_dict'], strict=False)
 new_model = FeatureExtractor(model)
 model.to(device)
 
 # read and transform each frame
 extracted_features = {}
-for frame in os.listdir(config['frames']['dir']):
-    frame_path = os.path.join(config['frames']['dir'], frame)
+for frame in os.listdir(args.frames):
+    frame_path = os.path.join(args.frames, frame)
     img = cv2.imread(frame_path)
     # breakpoint()
     img = torch.from_numpy(img)
@@ -58,6 +69,6 @@ plt.plot(x,y)
 plt.xlabel('Frames')
 plt.ylabel('Losses')
 plt.title('MSE loss between each two consecutive frame in one video (IceDancing_g01_c01)')
-plt.savefig('/home/sdastani/projects/rrg-ebrahimi/sdastani/SSL_video/src/visualization/MSE1.png')
+plt.savefig('./src/visualization/MSE.png')
 
 

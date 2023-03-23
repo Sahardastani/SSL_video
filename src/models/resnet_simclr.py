@@ -12,7 +12,7 @@ class ResNetSimCLR(nn.Module):
         self.backbone = self._get_basemodel(base_model)
         dim_mlp = self.backbone.fc.in_features
 
-        # add mlp projection head
+        # todo: We left the projection head because we wanted to just extract features using this model
         # self.backbone.fc = nn.Sequential(nn.Linear(dim_mlp, dim_mlp), nn.ReLU(), self.backbone.fc)
 
     def _get_basemodel(self, model_name):

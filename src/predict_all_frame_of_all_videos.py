@@ -1,5 +1,6 @@
 import os
 import cv2
+import argparse
 import warnings
 import torch 
 import torch.nn as nn
@@ -12,15 +13,24 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print("Using device:", device)
 warnings.filterwarnings('ignore')
 
-config = {
-    'pre_trained_model':{'dir': '/home/sdastani/scratch/resnet18/checkpoint_0100.pth.tar'},
-    'frames': {'dir':'/home/sdastani/scratch/ucf101/subset'}
-}
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--pre_trained_model', 
+                    type=str, 
+                    default='/home/sdastani/scratch/resnet18/checkpoint_0100.pth.tar', 
+                    help='The directory of pre-trained model.')
+
+parser.add_argument('--frames', 
+                    type=str, 
+                    default='./frames', #'/home/sdastani/scratch/ucf101/subset', 
+                    help='The direcotry of folder containing frames of each video.')
+
+args = parser.parse_args()
 
 # load the model from checkpoint
 model = ResNetSimCLR(base_model='resnet18', out_dim=128)
-torch.save({'model_state_dict': model.state_dict()}, config['pre_trained_model']['dir'])
-checkpoint = torch.load(config['pre_trained_model']['dir'], map_location = device)
+torch.save({'model_state_dict': model.state_dict()}, args.pre_trained_model)
+checkpoint = torch.load(args.pre_trained_model, map_location = device)
 model.load_state_dict(checkpoint['model_state_dict'], strict=False)
 new_model = FeatureExtractor(model)
 model.to(device)
@@ -30,10 +40,10 @@ all_video = {}
 loss_dict = {}
 std_list = []
 loss = nn.MSELoss()
-for video in os.listdir(config['frames']['dir']):
+for video in os.listdir(args.frames):
     extracted_features = {}
-    for frame in os.listdir(os.path.join(config['frames']['dir'], video)):
-        frame_path = os.path.join(config['frames']['dir'], video, frame)
+    for frame in os.listdir(os.path.join(args.frames, video)):
+        frame_path = os.path.join(args.frames, video, frame)
         img = cv2.imread(frame_path)
         img = torch.from_numpy(img)
         img = img.permute(2,0,1)
@@ -68,6 +78,4 @@ plt.plot(x,y)
 plt.xlabel('Frames')
 plt.ylabel('Losses')
 plt.title('Std of MSE losses between each two consecutive frame for 21 videos')
-plt.savefig('/home/sdastani/projects/rrg-ebrahimi/sdastani/SSL_video/src/visualization/std.png')
-
-
+plt.savefig('./src/visualization/std.png')
