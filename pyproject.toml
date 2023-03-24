@@ -1,3 +1,18 @@
 [build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.build_meta"
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name= "ssl_video"
+version= "0.0.1"
+description = "SSL video project"
+authors = ["a"]
+packages = [{include = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.10.6"
+torch = "^2.0.0"
+torchvision = "^0.15.1"
+av = "^10.0.0"
+opencv-python = "^4.7.0.72"
+matplotlib = "^3.7.1"
