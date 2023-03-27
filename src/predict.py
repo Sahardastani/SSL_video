@@ -76,18 +76,18 @@ for i, batch in enumerate(video_dataloader):
     all_video[video_dataset.video_files[i]] = extracted_features
 
     # Plot MSE losses between each two consecutive frame for a videos
-    x = [key for key in extracted_features]
-    x.pop()
-    y = loss_list
-    plt.plot(x,y)
-    plt.xlabel('Frames')
-    plt.ylabel('Losses')
-    plt.title(f'Std of MSE losses between each two consecutive frame for {video_dataset.video_files[i]}')
-    plt.savefig(f'./src/visualization/video_{i}.png')
-    plt.figure().clear()
-    plt.close()
-    plt.cla()
-    plt.clf()
+    # x = [key for key in extracted_features]
+    # x.pop()
+    # y = loss_list
+    # plt.plot(x,y)
+    # plt.xlabel('Frames')
+    # plt.ylabel('Losses')
+    # plt.title(f'Std of MSE losses between each two consecutive frame for {video_dataset.video_files[i]}')
+    # plt.savefig(f'./src/visualization/video_{i}.png')
+    # plt.figure().clear()
+    # plt.close()
+    # plt.cla()
+    # plt.clf()
 
     print(f'video {i} is finished.')
 
