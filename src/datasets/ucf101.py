@@ -5,6 +5,9 @@ import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 
+
+# Download 'https://storage.googleapis.com/thumos14_files/UCF101_videos.zip' and unzip it
+
 # Define the dataset class
 class VideoDataset(torch.utils.data.Dataset):
     def __init__(self, root_dir, transform=None):

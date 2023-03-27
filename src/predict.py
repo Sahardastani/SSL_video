@@ -10,9 +10,9 @@ import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 import torchvision.models as models
-from src.datasets.ucf101 import VideoDataset
-from src.models.resnet_simclr import ResNetSimCLR
-from src.models.feature_extractor import FeatureExtractor
+from datasets.ucf101 import VideoDataset
+from models.resnet_simclr import ResNetSimCLR
+from models.feature_extractor import FeatureExtractor
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print("Using device:", device)
 warnings.filterwarnings('ignore')
@@ -51,8 +51,9 @@ video_dataset = VideoDataset(args.videos, transform=transform)
 # Create a dataloader for the dataset
 video_dataloader = DataLoader(video_dataset, shuffle=True)
 
-
+# breakpoint()
 std_list = []
+all_video = {}
 loss = nn.MSELoss()
 for i, batch in enumerate(video_dataloader):
     extracted_features = {}
@@ -72,19 +73,21 @@ for i, batch in enumerate(video_dataloader):
         loss_list.append(output)
     std_list.append(loss_list)
 
+    all_video[video_dataset.video_files[i]] = extracted_features
+
     # Plot MSE losses between each two consecutive frame for a videos
-    # x = [key for key in extracted_features]
-    # x.pop()
-    # y = loss_list
-    # plt.plot(x,y)
-    # plt.xlabel('Frames')
-    # plt.ylabel('Losses')
-    # plt.title('Std of MSE losses between each two consecutive frame for a videos')
-    # plt.savefig(f'./src/visualization/video_{i}.png')
-    # plt.figure().clear()
-    # plt.close()
-    # plt.cla()
-    # plt.clf()
+    x = [key for key in extracted_features]
+    x.pop()
+    y = loss_list
+    plt.plot(x,y)
+    plt.xlabel('Frames')
+    plt.ylabel('Losses')
+    plt.title(f'Std of MSE losses between each two consecutive frame for {video_dataset.video_files[i]}')
+    plt.savefig(f'./src/visualization/video_{i}.png')
+    plt.figure().clear()
+    plt.close()
+    plt.cla()
+    plt.clf()
 
     print(f'video {i} is finished.')
 
