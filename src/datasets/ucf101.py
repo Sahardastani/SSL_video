@@ -29,7 +29,7 @@ class VideoDataset(torch.utils.data.Dataset):
         frames = []
         while True:
             ret, frame = video.read()
-            if not ret or len(frames) >= 50:
+            if not ret or len(frames) >= 51:
                 break
             frames.append(frame)
         
