@@ -21,12 +21,12 @@ warnings.filterwarnings('ignore')
 parser = argparse.ArgumentParser()
 parser.add_argument('--pre_trained_model', 
                     type=str, 
-                    default='/home/sdastani/scratch/resnet18/checkpoint_0100.pth.tar', 
+                    default='/home/sdastani/scratch/datasets/checkpoint_0100.pth.tar', 
                     help='The directory of pre-trained model.')
 
 parser.add_argument('--videos', 
                     type=str, 
-                    default='/home/sdastani/scratch/UCF101',
+                    default='/home/sdastani/scratch/datasets/UCF101',
                     help='The direcotry of videos.')
 args = parser.parse_args()
 
@@ -71,10 +71,11 @@ for i, batch in enumerate(video_dataloader):
     for k in range(len(extracted_features)-1):
         output = loss(extracted_features[k], extracted_features[k+1]).item()
         loss_list.append(output)
-    std_list.append(loss_list)
+    if len(loss_list) == 50:
+        std_list.append(loss_list)
 
     all_video[video_dataset.video_files[i]] = extracted_features
-
+    # breakpoint()
     # Plot MSE losses between each two consecutive frame for a videos
     # x = [key for key in extracted_features]
     # x.pop()
@@ -89,12 +90,13 @@ for i, batch in enumerate(video_dataloader):
     # plt.cla()
     # plt.clf()
 
-    print(f'video {i} is finished.')
+    print(f'video {i}: len(loss_list) = {len(loss_list)}')
 
 # plot the stds over all videos
 final_x = [key for key in extracted_features]
 final_x.pop()
 final_y = np.std(std_list, axis=0)
+print(f'len(std_list) = {len(std_list)}, len(x) = {len(final_x)}, len(y) = {len(final_y)}')
 plt.plot(final_x,final_y)
 plt.xlabel('Frames')
 plt.ylabel('Losses')
