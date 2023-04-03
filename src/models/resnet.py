@@ -1,3 +1,4 @@
+import torch 
 import torch.nn as nn
 import torchvision.models as models
 
@@ -12,7 +13,7 @@ class ResNetSimCLR(nn.Module):
         self.backbone = self._get_basemodel(base_model)
         dim_mlp = self.backbone.fc.in_features
 
-        # todo: We left the projection head because we wanted to just extract features using this model
+        # TODO: We left the projection head because we wanted to just extract features using this model
         # self.backbone.fc = nn.Sequential(nn.Linear(dim_mlp, dim_mlp), nn.ReLU(), self.backbone.fc)
 
     def _get_basemodel(self, model_name):
@@ -26,3 +27,22 @@ class ResNetSimCLR(nn.Module):
 
     def forward(self, x):
         return self.backbone(x)
+
+# Resnet18 model from BYOL. Source: https://github.com/sthalles/PyTorch-BYOL/blob/master/models/resnet_base_network.py
+class ResNet18(torch.nn.Module):
+    def __init__(self, *args, **kwargs):
+        super(ResNet18, self).__init__()
+        if kwargs['name'] == 'resnet18':
+            resnet = models.resnet18(pretrained=False)
+        elif kwargs['name'] == 'resnet50':
+            resnet = models.resnet50(pretrained=False)
+
+        # TODO: We left the projection head because we wanted to just extract features using this model
+        self.encoder = torch.nn.Sequential(*list(resnet.children())[:-1])
+        # self.projetion = MLPHead(in_channels=resnet.fc.in_features, **kwargs['projection_head'])
+
+    def forward(self, x):
+        h = self.encoder(x)
+        h = h.view(h.shape[0], h.shape[1])
+        # return self.projetion(h)
+        return h
