@@ -68,3 +68,72 @@ class FeatureExtractor_byol(nn.Module):
     out = self.flatten(out)
     out = self.fc(out) 
     return out 
+
+# Extract feature from an input image in resnet from simsiam
+class FeatureExtractor_simsiam(nn.Module):
+  def __init__(self, model):
+    super(FeatureExtractor_simsiam, self).__init__()
+		
+        # Extract resnet50 backbone Layers
+    self.backbone = nn.Sequential(
+        model.encoder.conv1,
+        model.encoder.bn1,
+        model.encoder.relu,
+        model.encoder.maxpool,
+        model.encoder.layer1,
+        model.encoder.layer2,
+        model.encoder.layer3,
+        model.encoder.layer4
+    )
+
+		# Extract resnet18 Average Pooling Layer
+    self.pooling = model.encoder.avgpool
+
+		# Convert the image into one-dimensional vector
+    self.flatten = nn.Flatten()
+
+		# Extract the fully-connected layer from resnet18
+    self.fc = nn.Linear(in_features=2048, out_features=512, bias=True)
+  
+  def forward(self, x):
+		# It will take the input 'x' until it returns the feature vector called 'out'
+    out = self.backbone(x)
+    out = self.pooling(out)
+    out = self.flatten(out)
+    out = self.fc(out) 
+    return out 
+
+# Extract feature from an input image in resnet from swav
+class FeatureExtractor_swav(nn.Module):
+  def __init__(self, model):
+    super(FeatureExtractor_swav, self).__init__()
+		
+        # Extract resnet50 backbone Layers
+    self.backbone = nn.Sequential(
+        model.padding,
+        model.conv1,
+        model.bn1,
+        model.relu,
+        model.maxpool,
+        model.layer1,
+        model.layer2,
+        model.layer3,
+        model.layer4
+    )
+
+		# Extract resnet18 Average Pooling Layer
+    self.pooling = model.avgpool
+
+		# Convert the image into one-dimensional vector
+    self.flatten = nn.Flatten()
+
+		# Extract the fully-connected layer from resnet18
+    self.fc = nn.Linear(in_features=2048, out_features=512, bias=True)
+  
+  def forward(self, x):
+		# It will take the input 'x' until it returns the feature vector called 'out'
+    out = self.backbone(x)
+    out = self.pooling(out)
+    out = self.flatten(out)
+    out = self.fc(out) 
+    return out 

@@ -12,8 +12,8 @@ from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 import torchvision.models as models
 from datasets.ucf101 import VideoDataset
-from models.resnet import ResNet18
-from models.feature_extractor import FeatureExtractor_byol
+from models.resnet import SimSiam
+from models.feature_extractor import FeatureExtractor_simsiam
 from __init__ import top_dir, data_dir, configs_dir
 
 # Define config, device, and ignore warnings
@@ -36,11 +36,11 @@ parser.add_argument('--videos',
 args = parser.parse_args()
 
 # load the model from checkpoint
-model = ResNet18(name= 'resnet18')
+model = SimSiam(models.__dict__['resnet50'], 2048, 512)
 torch.save({'model_state_dict': model.state_dict()}, args.pre_trained_model)
 checkpoint = torch.load(args.pre_trained_model, map_location = device)
 model.load_state_dict(checkpoint['model_state_dict'], strict=False)
-new_model = FeatureExtractor_byol(model.to(device)).to(device)
+new_model = FeatureExtractor_simsiam(model.to(device)).to(device)
 
 # Define the transform(s) to be applied to the video tensor
 transform = transforms.Compose([
@@ -89,4 +89,4 @@ plt.plot(final_x,final_y)
 plt.xlabel('Frames')
 plt.ylabel('Losses')
 plt.title('Std of MSE losses between each two consecutive frame for all videos')
-plt.savefig('./src/visualization/std_byol.png')
+plt.savefig('./src/visualization/std_simsiam.png')
