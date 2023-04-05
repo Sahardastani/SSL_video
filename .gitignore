@@ -4,6 +4,7 @@ mlruns
 # Ignore any outputs
 */outputs/
 data/
+checkpoints/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

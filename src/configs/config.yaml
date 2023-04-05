@@ -1,0 +1,5 @@
+checkpoint:
+  byol: ./checkpoints/resnet18_byol/checkpoint_040.pth
+  simclr: ./checkpoints/resnet18_simclr/checkpoint_0100.pth.tar
+  simsiam: ./checkpoints/resnet50_simsiam/checkpoint_0099.pth.tar
+  swav: ./checkpoints/resnet50_swav/swav_800ep_pretrain.pth.tar
