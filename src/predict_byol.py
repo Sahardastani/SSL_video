@@ -1,7 +1,6 @@
 import os
 import cv2
 import yaml
-import argparse
 import warnings
 import torch
 import torch.nn as nn
@@ -17,28 +16,15 @@ from models.feature_extractor import FeatureExtractor_byol
 from __init__ import top_dir, data_dir, configs_dir
 
 # Define config, device, and ignore warnings
-# config = yaml.load(open("src/configs/config.yaml", "r"), Loader=yaml.FullLoader)
+config = yaml.load(open("./src/configs/config.yaml", "r"), Loader=yaml.FullLoader)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print("Using device:", device)
 warnings.filterwarnings('ignore')
 
-# Define the directories
-parser = argparse.ArgumentParser()
-parser.add_argument('--pre_trained_model', 
-                    type=str, 
-                    default='/home/sdastani/scratch/datasets/checkpoints/resnet18_byol/checkpoint_040.pth', 
-                    help='The directory of pre-trained model.')
-
-parser.add_argument('--videos', 
-                    type=str, 
-                    default='/home/sdastani/scratch/datasets/UCF101',
-                    help='The direcotry of videos.')
-args = parser.parse_args()
-
 # load the model from checkpoint
 model = ResNet18(name= 'resnet18')
-torch.save({'model_state_dict': model.state_dict()}, args.pre_trained_model)
-checkpoint = torch.load(args.pre_trained_model, map_location = device)
+torch.save({'model_state_dict': model.state_dict()}, config['checkpoint']['byol'])
+checkpoint = torch.load(config['checkpoint']['byol'], map_location = device)
 model.load_state_dict(checkpoint['model_state_dict'], strict=False)
 new_model = FeatureExtractor_byol(model.to(device)).to(device)
 
@@ -49,7 +35,7 @@ transform = transforms.Compose([
 ])
 
 # Create an instance of the dataset
-video_dataset = VideoDataset(args.videos, transform=transform)
+video_dataset = VideoDataset(data_dir(), transform=transform)
 
 # Create a dataloader for the dataset
 video_dataloader = DataLoader(video_dataset, shuffle=False)
