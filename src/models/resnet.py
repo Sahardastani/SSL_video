@@ -445,6 +445,3 @@ def resnet50w4(**kwargs):
 
 def resnet50w5(**kwargs):
     return ResNet(Bottleneck, [3, 4, 6, 3], widen=5, **kwargs)
-
-# model = resnet50()
-# breakpoint()

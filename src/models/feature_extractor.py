@@ -86,13 +86,13 @@ class FeatureExtractor_simsiam(nn.Module):
         model.encoder.layer4
     )
 
-		# Extract resnet18 Average Pooling Layer
+		# Extract resnet50 Average Pooling Layer
     self.pooling = model.encoder.avgpool
 
 		# Convert the image into one-dimensional vector
     self.flatten = nn.Flatten()
 
-		# Extract the fully-connected layer from resnet18
+		# Extract the fully-connected layer from resnet50
     self.fc = nn.Linear(in_features=2048, out_features=512, bias=True)
   
   def forward(self, x):
@@ -121,13 +121,13 @@ class FeatureExtractor_swav(nn.Module):
         model.layer4
     )
 
-		# Extract resnet18 Average Pooling Layer
+		# Extract resnet50 Average Pooling Layer
     self.pooling = model.avgpool
 
 		# Convert the image into one-dimensional vector
     self.flatten = nn.Flatten()
 
-		# Extract the fully-connected layer from resnet18
+		# Extract the fully-connected layer from resnet50
     self.fc = nn.Linear(in_features=2048, out_features=512, bias=True)
   
   def forward(self, x):
