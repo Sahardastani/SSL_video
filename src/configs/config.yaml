@@ -3,3 +3,9 @@ checkpoint:
   simclr: ./checkpoints/resnet18_simclr/checkpoint_0100.pth.tar
   simsiam: ./checkpoints/resnet50_simsiam/checkpoint_0099.pth.tar
   swav: ./checkpoints/resnet50_swav/swav_800ep_pretrain.pth.tar
+  vicregl: ./checkpoints/resnet50_vicregl/resnet50_alpha0.9_fullckpt.pth
+
+warping:
+  flow: ./flow-frames/reference_frame_0010.flo
+  frame1: ./flow-frames/frame_0010.png
+  frame2: ./flow-frames/frame_0011.png
