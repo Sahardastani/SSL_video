@@ -6,6 +6,6 @@ checkpoint:
   vicregl: ./checkpoints/resnet50_vicregl/resnet50_alpha0.9_fullckpt.pth
 
 warping:
-  flow: ./flow-frames/reference_frame_0010.flo
-  frame1: ./flow-frames/frame_0010.png
-  frame2: ./flow-frames/frame_0011.png
+  flow: ./further/000000.flo #./flow-frames/reference_frame_0010.flo
+  frame1: ./further/frame_000000.png #./flow-frames/frame_0010.png
+  frame2: ./further/frame_000010.png #./flow-frames/frame_0011.png

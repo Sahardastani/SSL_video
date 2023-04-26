@@ -39,14 +39,15 @@ config = yaml.load(open("./src/configs/config.yaml", "r"), Loader=yaml.FullLoade
 # Load input frames and optical flow
 frame1 = TF.to_tensor(Image.open(config['warping']['frame1'])).unsqueeze(0) 
 frame2 = TF.to_tensor(Image.open(config['warping']['frame2'])).unsqueeze(0) 
+test = TF.to_tensor(Image.open('/home/sdastani/scratch/new/SSL_video/further/000000.flo.png')).unsqueeze(0) 
 flow = torch.tensor(cv2.readOpticalFlow(config['warping']['flow'])).permute(2, 0, 1).unsqueeze(0) 
-
+breakpoint()
 # Warp frame1 to get frame2
 warped_frame1 = warp_image(frame1, flow)
 
 # Compute the difference between the warped frame1 and frame2
 diff = (warped_frame1 - frame2).abs().sum(dim=1, keepdim=True)
-breakpoint()
+
 # Save the result
 result = TF.to_pil_image(diff[0])
 result.save('src/visualization/warped_image.png')
