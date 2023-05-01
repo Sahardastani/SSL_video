@@ -9,7 +9,7 @@ import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
-import torchvision.models as models
+import torchvision.models as models 
 
 import sys
 sys.path.insert(0, 'src')
@@ -17,7 +17,7 @@ sys.path.insert(1, 'src/datasets')
 sys.path.insert(2, 'src/models')
 
 import ucf101
-import resnet, feature_extractor
+from feature_extractors import resnet as resnet_models
 from __init__ import top_dir, data_dir, configs_dir
 
 # Define config, device, and ignore warnings
@@ -27,11 +27,11 @@ print("Using device:", device)
 warnings.filterwarnings('ignore')
 
 # load the model from checkpoint
-model = resnet.SimSiam(models.__dict__['resnet50'], 2048, 512)
-torch.save({'model_state_dict': model.state_dict()}, config['checkpoint']['simsiam'])
-checkpoint = torch.load(config['checkpoint']['simsiam'], map_location = device)
+model = resnet_models.__dict__['resnet50']()
+torch.save({'model_state_dict': model.state_dict()}, config['checkpoint']['swav'])
+checkpoint = torch.load(config['checkpoint']['swav'], map_location = device)
 model.load_state_dict(checkpoint['model_state_dict'], strict=False)
-new_model = feature_extractor.FeatureExtractor_simsiam(model.to(device)).to(device)
+new_model = resnet_models.FeatureExtractor_swav(model.to(device)).to(device)
 
 # Define the transform(s) to be applied to the video tensor
 transform = transforms.Compose([
@@ -40,7 +40,7 @@ transform = transforms.Compose([
 ])
 
 # Create an instance of the dataset
-video_dataset = ucf101.VideoDataset(data_dir(), transform=transform)
+video_dataset = ucf101.ucf101(data_dir(), transform=transform)
 
 # Create a dataloader for the dataset
 video_dataloader = DataLoader(video_dataset, shuffle=False)
@@ -80,4 +80,4 @@ plt.plot(final_x,final_y)
 plt.xlabel('Frames')
 plt.ylabel('Losses')
 plt.title('Std of MSE losses between each two consecutive frame for all videos')
-plt.savefig('./src/visualization/std_simsiam.png')
+plt.savefig('./src/visualization/std_swav.png')

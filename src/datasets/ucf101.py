@@ -10,7 +10,7 @@ from PIL import Image
 # Download 'https://storage.googleapis.com/thumos14_files/UCF101_videos.zip' and unzip it
 
 # Define the dataset class
-class VideoDataset(Dataset):
+class ucf101(Dataset):
     def __init__(self, root_dir, transform=None):
         self.root_dir = root_dir
         self.transform = transform
@@ -44,20 +44,3 @@ class VideoDataset(Dataset):
         # Close the video file and return the tensor
         video.release()
         return video_tensor
-
-
-class DoubleTransformBatchDataset(Dataset):
-    def __init__(self, img_paths, transform1, transform2):
-        self.img_paths = img_paths
-        self.transform1 = transform1
-        self.transform2 = transform2
-
-    def __len__(self):
-        return len(self.img_paths)
-
-    def __getitem__(self, idx):
-        img_path = self.img_paths[idx]
-        img = Image.open(img_path).convert('RGB')
-        transformed_img1 = self.transform1(img)
-        transformed_img2 = self.transform2(img)
-        return transformed_img1, transformed_img2
