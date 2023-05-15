@@ -132,7 +132,7 @@ python test.py configs/benchmark/gym_set_FX_S1/112x112x32.yaml   --pretext-model
 ### IV. Downstream Task-shift
 
 #### In-domain
-* Training:
+* **Training:**\
     For finetuning pretrained models for the task of Repetition-Counting run as following:
 
     ```bash
@@ -162,7 +162,7 @@ python test.py configs/benchmark/gym_set_FX_S1/112x112x32.yaml   --pretext-model
     ```
 
 * Testing:
-    python main.py --no_train --resume_path = path to the finetuned_checkpoint with best validation accuracy (check validations logs )
+    python main.py --no_train --resume_path = path to the finetuned_checkpoint with best validation accuracy (check validations logs)
 
 #### Out-domain
 
