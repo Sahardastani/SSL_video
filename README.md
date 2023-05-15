@@ -161,14 +161,14 @@ python test.py configs/benchmark/gym_set_FX_S1/112x112x32.yaml   --pretext-model
 
     ```
 
-* Testing:
+* **Testing:**\
     python main.py --no_train --resume_path = path to the finetuned_checkpoint with best validation accuracy (check validations logs)
 
 #### Out-domain
 
 * Install dependencies in [severe_benchmark/action_detection_multi_label_classification/setup/create_env.sh](severe_benchmark/action_detection_multi_label_classification/setup/create_env.sh)
 
-* Task: Action Detection
+* **Task: Action Detection**\
     Symlink the pre-trained models for initialization. Suppose all your VSSL pre-trained checkpoints are at `../checkpoints_pretraining`
     ```sh
     ls -s ../checkpoints_pretraining/ checkpoints_pretraining
@@ -208,7 +208,7 @@ python test.py configs/benchmark/gym_set_FX_S1/112x112x32.yaml   --pretext-model
 
     The training is followed by an evaluation on the test set. Thus, the numbers will be displayed in logs at the end of the run.
 
-* Task: Multi-Label Classification
+* **Task: Multi-Label Classification**\
     Configure an output folder where all logs/checkpoints should be stored. For e.g., if you want to store all outputs at `/path/to/outputs/`, then symlink it:
     ```sh
     ln -s /path/to/outputs/ outputs
