@@ -7,6 +7,7 @@ data/
 checkpoints/
 JPEGImages/
 datasets/
+out/
 
 */*/__pycache__
 */*/*__pycache__*
