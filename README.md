@@ -22,7 +22,8 @@ Download the dataset and unrar it using `7z x UC101.zip`.
 * [NTU-60](https://rose1.ntu.edu.sg/dataset/actionRecognition/)
 * [Fine-Gym v_1.0](https://sdolivia.github.io/FineGym/)
 
-* [AVA preprocessing](https://research.google.com/ava/download.html): First, you need to create a symlink to the root dataset folder into the repo. For e.g., if you store all your datasets at `/path/to/datasets/`, then,
+* [AVA preprocessing](https://research.google.com/ava/download.html):\
+    First, you need to create a symlink to the root dataset folder into the repo. For e.g., if you store all your datasets at `/path/to/datasets/`, then,
     ```sh
     # make sure you are inside the `SlowFast-ssl-vssl/` folder in the repo
     ln -s /path/to/datasets/ data
@@ -53,8 +54,6 @@ Download the dataset and unrar it using `7z x UC101.zip`.
     5. Setup exception videos that may have failed the first time. For me, there was this video `I8j6Xq2B5ys.mp4` that failed the first time. See `scripts/prepare-ava/exception.sh` to re-run the steps for such videos.
 
 * [Charades](https://prior.allenai.org/projects/charades) dataset.
-
-    :hourglass: This, overall, takes about 2 hours.
 
     1. Download and unzip RGB frames
     ```sh
