@@ -22,66 +22,35 @@ Download the dataset and unrar it using `7z x UC101.zip`.
 * [NTU-60](https://rose1.ntu.edu.sg/dataset/actionRecognition/)
 * [Fine-Gym v_1.0](https://sdolivia.github.io/FineGym/)
 
-* We expect a directory hierarchy as below. After downloading the datasets from the original sources, please update the data and annotation paths for each dataset in the respective dataloader scripts e.g datasets/ucf.py, datasets/something.py, datasets/gym_99.py, etc. 
-```
-├── datasets_root
-│   ├──ucf101
-│   │   ├── ucfTrainTestlist
-│   │   │   ├── classInd.txt
-│   │   │   ├── testlist01.txt
-│   │   │   ├── trainlist01.txt
-│   │   │   └── ...
-│   │   └── UCF-101
-│   │       ├── ApplyEyeMakeup
-│   │       │   └── *.avi
-│   │       └── ...
-│   ├──gym
-│   │   ├── annotations
-│   │   │   ├── gym99_train.txt
-│   │   │   ├── gym99_val.txt 
-│   │   │   ├── gym288_train.txt
-│   │   │   ├── gym288_val.txt
-│   │   │   └──
-│   │   └── videos
-│   │       ├── *.avi
-│   │       └── ...
-│   │
-│   │──smth-smth-v2
-│   │   ├── something-something-v2-annotations
-│   │   │   ├── something-something-v2-labels.json
-│   │   │   ├── something-something-v2-test.json
-│   │   │   ├── something-something-v2-train.json
-│   │   │   └── something-something-v2-validation.json
-│   │   │       
-│   │   └── something-something-v2-videos_avi
-│   │       └── *.avi
-│   │          
-│   ├──ntu60
-│   │   ├── ntu_60_cross_subject_TrainTestlist
-│   │   │   ├── classInd.txt
-│   │   │   ├── testlist01.txt
-│   │   │   ├── trainlist01.txt
-│   │   │   └── ...
-│   │   └── videos
-│   │       ├── brushing_hair
-│   │       │   └── *.avi
-│   │       ├── brushing_teeth
-│   │       │   └── *.avi
-│   │       └── ...
-│   │
-│   ├──kinetics-400
-│   │   ├── labels
-│   │   │   ├── train_videofolder.txt
-│   │   │   ├── val_videofolder.txt
-│   │   │   └── ...
-│   │   └── VideoData
-│   │       ├── playing_cards
-│   │       │   └── *.avi
-│   │       ├── singing
-│   │       │   └── *.avi
-│   │       └── ...
-└── ...
-```
+* [AVA preprocessing](https://research.google.com/ava/download.html): First, you need to create a symlink to the root dataset folder into the repo. For e.g., if you store all your datasets at `/path/to/datasets/`, then,
+    ```sh
+    # make sure you are inside the `SlowFast-ssl-vssl/` folder in the repo
+    ln -s /path/to/datasets/ data
+    ```
+    These steps are based on the ones in original repo.
+
+    1. Download: This step takes about 3.5 hours.
+    ```sh
+    cd scripts/prepare-ava/
+    bash download_data.sh
+    ```
+
+    2. Cut each video from its 15th to 30th minute: This step takes about 14 hours.
+    ```sh
+    bash cut_videos.sh
+    ```
+
+    3. Extract frames: This step takes about 1 hour.
+    ```sh
+    bash extract_frames.sh
+    ```
+
+    4. Download annotations: This step takes about 30 minutes.
+    ```sh
+    bash download_annotations.sh
+    ```
+
+    5. Setup exception videos that may have failed the first time. For me, there was this video `I8j6Xq2B5ys.mp4` that failed the first time. See `scripts/prepare-ava/exception.sh` to re-run the steps for such videos.
 
 ## Experiments
 
@@ -155,35 +124,6 @@ python test.py configs/benchmark/gym_set_FX_S1/112x112x32.yaml   --pretext-model
     ```sh
     ls -s ../checkpoints_pretraining/ checkpoints_pretraining
     ```
-* AVA preprocessing: First, you need to create a symlink to the root dataset folder into the repo. For e.g., if you store all your datasets at `/path/to/datasets/`, then,
-    ```sh
-    # make sure you are inside the `SlowFast-ssl-vssl/` folder in the repo
-    ln -s /path/to/datasets/ data
-    ```
-    These steps are based on the ones in original repo.
-
-    1. Download: This step takes about 3.5 hours.
-    ```sh
-    cd scripts/prepare-ava/
-    bash download_data.sh
-    ```
-
-    2. Cut each video from its 15th to 30th minute: This step takes about 14 hours.
-    ```sh
-    bash cut_videos.sh
-    ```
-
-    3. Extract frames: This step takes about 1 hour.
-    ```sh
-    bash extract_frames.sh
-    ```
-
-    4. Download annotations: This step takes about 30 minutes.
-    ```sh
-    bash download_annotations.sh
-    ```
-
-    5. Setup exception videos that may have failed the first time. For me, there was this video `I8j6Xq2B5ys.mp4` that failed the first time. See `scripts/prepare-ava/exception.sh` to re-run the steps for such videos.
 
 
 
