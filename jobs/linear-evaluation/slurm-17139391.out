@@ -1,0 +1,759 @@
+-----<linear evaluation - ucf - gdt>-----
+==============================   SLURM   ==============================
+SLURM_MPI_TYPE                : pmix_v3
+SLURM_NODEID                  : 0
+SLURM_TASK_PID                : 896837
+SLURM_PRIO_PROCESS            : 0
+SLURM_SUBMIT_DIR              : /lustre06/project/6061875/sdastani/SSL_video/jobs/linear-evaluation
+SLURM_CPUS_PER_TASK           : 1
+SLURM_PROCID                  : 0
+SLURM_JOB_GID                 : 3121684
+SLURMD_NODENAME               : ng30202
+RSNT_SLURM_MPI_TYPE           : pmix_v3
+SLURM_TASKS_PER_NODE          : 1
+SLURM_NNODES                  : 1
+SLURM_TMPDIR                  : /localscratch/sdastani.17139391.0
+SLURM_NTASKS_PER_NODE         : 1
+SLURM_JOB_NODELIST            : ng30202
+SLURM_CLUSTER_NAME            : narval
+SLURM_NODELIST                : ng30202
+SLURM_GPUS_ON_NODE            : 1
+SLURM_NTASKS                  : 1
+SLURM_JOB_CPUS_PER_NODE       : 1
+SLURM_TOPOLOGY_ADDR           : ihpc207u29.ihpc302u25.ng30202
+SLURM_WORKING_CLUSTER         : narval:10.100.129.45:6817:9728:109
+SLURM_JOB_NAME                : brats
+SLURM_JOB_GPUS                : 3
+SLURM_JOBID                   : 17139391
+SLURM_CONF                    : /etc/slurm/slurm.conf
+SLURM_NODE_ALIASES            : (null)
+SLURM_JOB_QOS                 : normal
+SLURM_TOPOLOGY_ADDR_PATTERN   : switch.switch.node
+SLURM_CPUS_ON_NODE            : 1
+SLURM_JOB_NUM_NODES           : 1
+SLURM_MEM_PER_NODE            : 32768
+SLURM_JOB_UID                 : 3121684
+SLURM_JOB_PARTITION           : gpubase_bygpu_b3
+SLURM_SCRIPT_CONTEXT          : prolog_task
+SLURM_JOB_USER                : sdastani
+SLURM_NPROCS                  : 1
+SLURM_SUBMIT_HOST             : narval1.narval.calcul.quebec
+SLURM_JOB_ACCOUNT             : rrg-ebrahimi_gpu
+SLURM_GTIDS                   : 0
+SLURM_RESTART_COUNT           : 0
+SLURM_JOB_ID                  : 17139391
+SLURM_LOCALID                 : 0
+==============================   Config   ==============================
+required_devices: 8
+resume: False
+no_test: False
+test_only: False
+debug: False
+seed: 0
+distributed: False
+test_freq: 5
+num_workers: 16
+benchmark
+  name: ucf101-linear_112X112x32
+dataset
+  name: ucf101
+  fold: 1
+  batch_size: 128
+  clip_duration: 1.0
+  video_fps: 16.0
+  crop_size: 112
+  transform: msc+color
+  min_area: 0.08
+  color: [0.4, 0.4, 0.4, 0.2]
+  switch_channels: False
+  normalize: True
+  num_of_examples: 0
+  train
+    split: trainlist{fold:02d}
+    mode: clip
+    clips_per_video: 10
+    use_augmentation: True
+    use_shuffle: True
+    drop_last: True
+  test
+    split: testlist{fold:02d}
+    mode: clip
+    clips_per_video: 3
+    use_augmentation: False
+    use_shuffle: False
+    drop_last: False
+  test_dense
+    split: testlist{fold:02d}
+    mode: video
+    clips_per_video: 10
+    use_augmentation: False
+    use_shuffle: False
+    drop_last: False
+optimizer
+  name: adam
+  num_epochs: 10
+  weight_decay: 0.0
+  warmup_classifier: False
+  lr
+    name: multistep
+    base_lr: 0.01
+    gamma: 0.3
+    milestones: [4, 8, 10]
+model
+  args
+    n_classes: 101
+    feat_dim: 512
+:::::::::::::::::::::::::::::::::::::::::::::::::::::::::: Loading gdt checkpoint ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+Checkpoint Path: ../checkpoints_pretraining/gdt/gdt_K400.pth
+Checkpoint Message: _IncompatibleKeys(missing_keys=['fc.weight', 'fc.bias'], unexpected_keys=['mlp_v.block_forward.2.weight', 'mlp_v.block_forward.4.weight', 'mlp_v.block_forward.4.bias', 'mlp_v.block_forward.4.running_mean', 'mlp_v.block_forward.4.running_var', 'mlp_v.block_forward.4.num_batches_tracked', 'mlp_v.block_forward.8.weight', 'mlp_v.block_forward.8.bias'])
+==============================   Parameters   ==============================
+stem.0.weight                                                          | Frozen     | 45 x 3 x 1 x 7 x 7             | 6615
+stem.1.weight                                                          | Frozen     | 45                             | 45
+stem.1.bias                                                            | Frozen     | 45                             | 45
+stem.3.weight                                                          | Frozen     | 64 x 45 x 3 x 1 x 1            | 8640
+stem.4.weight                                                          | Frozen     | 64                             | 64
+stem.4.bias                                                            | Frozen     | 64                             | 64
+layer1.0.conv1.0.0.weight                                              | Frozen     | 144 x 64 x 1 x 3 x 3           | 82944
+layer1.0.conv1.0.1.weight                                              | Frozen     | 144                            | 144
+layer1.0.conv1.0.1.bias                                                | Frozen     | 144                            | 144
+layer1.0.conv1.0.3.weight                                              | Frozen     | 64 x 144 x 3 x 1 x 1           | 27648
+layer1.0.conv1.1.weight                                                | Frozen     | 64                             | 64
+layer1.0.conv1.1.bias                                                  | Frozen     | 64                             | 64
+layer1.0.conv2.0.0.weight                                              | Frozen     | 144 x 64 x 1 x 3 x 3           | 82944
+layer1.0.conv2.0.1.weight                                              | Frozen     | 144                            | 144
+layer1.0.conv2.0.1.bias                                                | Frozen     | 144                            | 144
+layer1.0.conv2.0.3.weight                                              | Frozen     | 64 x 144 x 3 x 1 x 1           | 27648
+layer1.0.conv2.1.weight                                                | Frozen     | 64                             | 64
+layer1.0.conv2.1.bias                                                  | Frozen     | 64                             | 64
+layer1.1.conv1.0.0.weight                                              | Frozen     | 144 x 64 x 1 x 3 x 3           | 82944
+layer1.1.conv1.0.1.weight                                              | Frozen     | 144                            | 144
+layer1.1.conv1.0.1.bias                                                | Frozen     | 144                            | 144
+layer1.1.conv1.0.3.weight                                              | Frozen     | 64 x 144 x 3 x 1 x 1           | 27648
+layer1.1.conv1.1.weight                                                | Frozen     | 64                             | 64
+layer1.1.conv1.1.bias                                                  | Frozen     | 64                             | 64
+layer1.1.conv2.0.0.weight                                              | Frozen     | 144 x 64 x 1 x 3 x 3           | 82944
+layer1.1.conv2.0.1.weight                                              | Frozen     | 144                            | 144
+layer1.1.conv2.0.1.bias                                                | Frozen     | 144                            | 144
+layer1.1.conv2.0.3.weight                                              | Frozen     | 64 x 144 x 3 x 1 x 1           | 27648
+layer1.1.conv2.1.weight                                                | Frozen     | 64                             | 64
+layer1.1.conv2.1.bias                                                  | Frozen     | 64                             | 64
+layer2.0.conv1.0.0.weight                                              | Frozen     | 230 x 64 x 1 x 3 x 3           | 132480
+layer2.0.conv1.0.1.weight                                              | Frozen     | 230                            | 230
+layer2.0.conv1.0.1.bias                                                | Frozen     | 230                            | 230
+layer2.0.conv1.0.3.weight                                              | Frozen     | 128 x 230 x 3 x 1 x 1          | 88320
+layer2.0.conv1.1.weight                                                | Frozen     | 128                            | 128
+layer2.0.conv1.1.bias                                                  | Frozen     | 128                            | 128
+layer2.0.conv2.0.0.weight                                              | Frozen     | 230 x 128 x 1 x 3 x 3          | 264960
+layer2.0.conv2.0.1.weight                                              | Frozen     | 230                            | 230
+layer2.0.conv2.0.1.bias                                                | Frozen     | 230                            | 230
+layer2.0.conv2.0.3.weight                                              | Frozen     | 128 x 230 x 3 x 1 x 1          | 88320
+layer2.0.conv2.1.weight                                                | Frozen     | 128                            | 128
+layer2.0.conv2.1.bias                                                  | Frozen     | 128                            | 128
+layer2.0.downsample.0.weight                                           | Frozen     | 128 x 64 x 1 x 1 x 1           | 8192
+layer2.0.downsample.1.weight                                           | Frozen     | 128                            | 128
+layer2.0.downsample.1.bias                                             | Frozen     | 128                            | 128
+layer2.1.conv1.0.0.weight                                              | Frozen     | 288 x 128 x 1 x 3 x 3          | 331776
+layer2.1.conv1.0.1.weight                                              | Frozen     | 288                            | 288
+layer2.1.conv1.0.1.bias                                                | Frozen     | 288                            | 288
+layer2.1.conv1.0.3.weight                                              | Frozen     | 128 x 288 x 3 x 1 x 1          | 110592
+layer2.1.conv1.1.weight                                                | Frozen     | 128                            | 128
+layer2.1.conv1.1.bias                                                  | Frozen     | 128                            | 128
+layer2.1.conv2.0.0.weight                                              | Frozen     | 288 x 128 x 1 x 3 x 3          | 331776
+layer2.1.conv2.0.1.weight                                              | Frozen     | 288                            | 288
+layer2.1.conv2.0.1.bias                                                | Frozen     | 288                            | 288
+layer2.1.conv2.0.3.weight                                              | Frozen     | 128 x 288 x 3 x 1 x 1          | 110592
+layer2.1.conv2.1.weight                                                | Frozen     | 128                            | 128
+layer2.1.conv2.1.bias                                                  | Frozen     | 128                            | 128
+layer3.0.conv1.0.0.weight                                              | Frozen     | 460 x 128 x 1 x 3 x 3          | 529920
+layer3.0.conv1.0.1.weight                                              | Frozen     | 460                            | 460
+layer3.0.conv1.0.1.bias                                                | Frozen     | 460                            | 460
+layer3.0.conv1.0.3.weight                                              | Frozen     | 256 x 460 x 3 x 1 x 1          | 353280
+layer3.0.conv1.1.weight                                                | Frozen     | 256                            | 256
+layer3.0.conv1.1.bias                                                  | Frozen     | 256                            | 256
+layer3.0.conv2.0.0.weight                                              | Frozen     | 460 x 256 x 1 x 3 x 3          | 1059840
+layer3.0.conv2.0.1.weight                                              | Frozen     | 460                            | 460
+layer3.0.conv2.0.1.bias                                                | Frozen     | 460                            | 460
+layer3.0.conv2.0.3.weight                                              | Frozen     | 256 x 460 x 3 x 1 x 1          | 353280
+layer3.0.conv2.1.weight                                                | Frozen     | 256                            | 256
+layer3.0.conv2.1.bias                                                  | Frozen     | 256                            | 256
+layer3.0.downsample.0.weight                                           | Frozen     | 256 x 128 x 1 x 1 x 1          | 32768
+layer3.0.downsample.1.weight                                           | Frozen     | 256                            | 256
+layer3.0.downsample.1.bias                                             | Frozen     | 256                            | 256
+layer3.1.conv1.0.0.weight                                              | Frozen     | 576 x 256 x 1 x 3 x 3          | 1327104
+layer3.1.conv1.0.1.weight                                              | Frozen     | 576                            | 576
+layer3.1.conv1.0.1.bias                                                | Frozen     | 576                            | 576
+layer3.1.conv1.0.3.weight                                              | Frozen     | 256 x 576 x 3 x 1 x 1          | 442368
+layer3.1.conv1.1.weight                                                | Frozen     | 256                            | 256
+layer3.1.conv1.1.bias                                                  | Frozen     | 256                            | 256
+layer3.1.conv2.0.0.weight                                              | Frozen     | 576 x 256 x 1 x 3 x 3          | 1327104
+layer3.1.conv2.0.1.weight                                              | Frozen     | 576                            | 576
+layer3.1.conv2.0.1.bias                                                | Frozen     | 576                            | 576
+layer3.1.conv2.0.3.weight                                              | Frozen     | 256 x 576 x 3 x 1 x 1          | 442368
+layer3.1.conv2.1.weight                                                | Frozen     | 256                            | 256
+layer3.1.conv2.1.bias                                                  | Frozen     | 256                            | 256
+layer4.0.conv1.0.0.weight                                              | Frozen     | 921 x 256 x 1 x 3 x 3          | 2121984
+layer4.0.conv1.0.1.weight                                              | Frozen     | 921                            | 921
+layer4.0.conv1.0.1.bias                                                | Frozen     | 921                            | 921
+layer4.0.conv1.0.3.weight                                              | Frozen     | 512 x 921 x 3 x 1 x 1          | 1414656
+layer4.0.conv1.1.weight                                                | Frozen     | 512                            | 512
+layer4.0.conv1.1.bias                                                  | Frozen     | 512                            | 512
+layer4.0.conv2.0.0.weight                                              | Frozen     | 921 x 512 x 1 x 3 x 3          | 4243968
+layer4.0.conv2.0.1.weight                                              | Frozen     | 921                            | 921
+layer4.0.conv2.0.1.bias                                                | Frozen     | 921                            | 921
+layer4.0.conv2.0.3.weight                                              | Frozen     | 512 x 921 x 3 x 1 x 1          | 1414656
+layer4.0.conv2.1.weight                                                | Frozen     | 512                            | 512
+layer4.0.conv2.1.bias                                                  | Frozen     | 512                            | 512
+layer4.0.downsample.0.weight                                           | Frozen     | 512 x 256 x 1 x 1 x 1          | 131072
+layer4.0.downsample.1.weight                                           | Frozen     | 512                            | 512
+layer4.0.downsample.1.bias                                             | Frozen     | 512                            | 512
+layer4.1.conv1.0.0.weight                                              | Frozen     | 1152 x 512 x 1 x 3 x 3         | 5308416
+layer4.1.conv1.0.1.weight                                              | Frozen     | 1152                           | 1152
+layer4.1.conv1.0.1.bias                                                | Frozen     | 1152                           | 1152
+layer4.1.conv1.0.3.weight                                              | Frozen     | 512 x 1152 x 3 x 1 x 1         | 1769472
+layer4.1.conv1.1.weight                                                | Frozen     | 512                            | 512
+layer4.1.conv1.1.bias                                                  | Frozen     | 512                            | 512
+layer4.1.conv2.0.0.weight                                              | Frozen     | 1152 x 512 x 1 x 3 x 3         | 5308416
+layer4.1.conv2.0.1.weight                                              | Frozen     | 1152                           | 1152
+layer4.1.conv2.0.1.bias                                                | Frozen     | 1152                           | 1152
+layer4.1.conv2.0.3.weight                                              | Frozen     | 512 x 1152 x 3 x 1 x 1         | 1769472
+layer4.1.conv2.1.weight                                                | Frozen     | 512                            | 512
+layer4.1.conv2.1.bias                                                  | Frozen     | 512                            | 512
+fc.weight                                                              | Trainable  | 400 x 512                      | 204800
+fc.bias                                                                | Trainable  | 400                            | 400
+
+config {'name': 'adam', 'num_epochs': 10, 'weight_decay': 0.0, 'warmup_classifier': False, 'lr': {'name': 'multistep', 'base_lr': 0.01, 'gamma': 0.3, 'milestones': [4, 8, 10]}}
+==============================   Train DB   ==============================
+False
+UCF-101
+ - Root: /home/sdastani/scratch/datasets/ucf101
+ - Subset: trainlist01
+ - Num videos: 9537
+ - Num samples: 95370
+ - Example video: /home/sdastani/scratch/datasets/ucf101/ApplyEyeMakeup/v_ApplyEyeMakeup_g08_c01.avi
+
+==============================   Test DB   ==============================
+False
+UCF-101
+ - Root: /home/sdastani/scratch/datasets/ucf101
+ - Subset: testlist01
+ - Num videos: 3783
+ - Num samples: 11349
+ - Example video: /home/sdastani/scratch/datasets/ucf101/ApplyEyeMakeup/v_ApplyEyeMakeup_g01_c01.avi
+
+==============================   Dense DB   ==============================
+False
+UCF-101
+ - Root: /home/sdastani/scratch/datasets/ucf101
+ - Subset: testlist01
+ - Num videos: 3783
+ - Num samples: 37830
+ - Example video: /home/sdastani/scratch/datasets/ucf101/ApplyEyeMakeup/v_ApplyEyeMakeup_g01_c01.avi
+
+==============================   Training   ==============================
+============================== Epoch 0 ==============================
+LR: [0.01]
+
+train: Epoch 0
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/models/_utils.py:208: UserWarning: The parameter 'pretrained' is deprecated since 0.13 and may be removed in the future, please use 'weights' instead.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/models/_utils.py:223: UserWarning: Arguments other than a weight enum or `None` for 'weights' are deprecated since 0.13 and may be removed in the future. The current behavior is equivalent to passing `weights=None`.
+  warnings.warn(msg)
+/home/sdastani/env3.8/lib/python3.8/site-packages/torch/utils/data/dataloader.py:554: UserWarning: This DataLoader will create 16 worker processes in total. Our suggested max number of worker in current system is 1, which is smaller than what this DataLoader is going to create. Please be aware that excessive worker creation might get DataLoader running slow or even freeze, lower the worker number to avoid potential slowness/freeze if necessary.
+  warnings.warn(_create_warning_msg(
+2023-05-21 20:06:40.745138 | train [0][  1/745]	Time 139.685 (139.685)	Data 110.150 (110.150)	Loss 5.9946e+00 (5.9946e+00)	Acc@1   0.00 (  0.00)	Acc@5   0.78 (  0.78)
+2023-05-21 20:13:05.288475 | train [0][100/745]	Time  1.853 ( 5.242)	Data  1.467 ( 4.383)	Loss 2.3469e+00 (3.0801e+00)	Acc@1  44.53 ( 37.86)	Acc@5  76.56 ( 64.37)
+2023-05-21 20:20:11.603983 | train [0][200/745]	Time  0.564 ( 4.263)	Data  0.000 ( 3.688)	Loss 1.9668e+00 (2.5309e+00)	Acc@1  52.34 ( 46.23)	Acc@5  81.25 ( 73.02)
+2023-05-21 20:27:17.431039 | train [0][300/745]	Time  0.561 ( 4.258)	Data  0.000 ( 3.693)	Loss 1.5880e+00 (2.2573e+00)	Acc@1  67.19 ( 50.43)	Acc@5  86.72 ( 76.97)
+2023-05-21 20:34:27.388485 | train [0][400/745]	Time  0.550 ( 4.300)	Data  0.000 ( 3.735)	Loss 1.4798e+00 (2.0779e+00)	Acc@1  59.38 ( 53.36)	Acc@5  90.62 ( 79.38)
+2023-05-21 20:42:34.092922 | train [0][500/745]	Time  8.427 ( 4.867)	Data  7.996 ( 4.314)	Loss 1.5324e+00 (1.9561e+00)	Acc@1  56.25 ( 55.31)	Acc@5  88.28 ( 80.92)
+2023-05-21 20:49:48.557456 | train [0][600/745]	Time 10.630 ( 4.345)	Data 10.210 ( 3.775)	Loss 1.3779e+00 (1.8597e+00)	Acc@1  60.94 ( 56.93)	Acc@5  87.50 ( 82.11)
+2023-05-21 20:56:49.610025 | train [0][700/745]	Time  0.555 ( 4.210)	Data  0.000 ( 3.640)	Loss 1.2908e+00 (1.7814e+00)	Acc@1  66.41 ( 58.32)	Acc@5  92.19 ( 83.11)
+2023-05-21 20:59:36.472831 | train [0][745/745]	Time  0.357 ( 3.868)	Data  0.000 ( 3.327)	Loss 1.3608e+00 (1.7522e+00)	Acc@1  63.28 ( 58.81)	Acc@5  90.62 ( 83.49)
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+
+test: Epoch 0
+2023-05-21 21:00:35.440346 | test [0][ 1/89]	Time 58.523 (58.523)	Data 58.026 (58.026)	Loss 1.1006e+00 (1.1006e+00)	Acc@1  64.84 ( 64.84)	Acc@5  94.53 ( 94.53)
+2023-05-21 21:04:27.145070 | test [0][89/89]	Time  0.215 ( 3.261)	Data  0.000 ( 2.767)	Loss 1.7009e+00 (1.3045e+00)	Acc@1  55.29 ( 64.90)	Acc@5  84.71 ( 88.88)
+============================== Epoch 1 ==============================
+LR: [0.01]
+
+train: Epoch 1
+2023-05-21 21:05:38.272508 | train [1][  1/745]	Time 69.151 (69.151)	Data 68.771 (68.771)	Loss 1.2272e+00 (1.2272e+00)	Acc@1  68.75 ( 68.75)	Acc@5  92.97 ( 92.97)
+2023-05-21 21:12:59.495499 | train [1][100/745]	Time  0.749 ( 5.104)	Data  0.053 ( 4.532)	Loss 9.6206e-01 (1.2175e+00)	Acc@1  75.00 ( 68.75)	Acc@5  93.75 ( 89.94)
+2023-05-21 21:20:09.456993 | train [1][200/745]	Time  0.565 ( 4.300)	Data  0.000 ( 3.747)	Loss 1.1884e+00 (1.2217e+00)	Acc@1  67.19 ( 68.43)	Acc@5  93.75 ( 89.83)
+2023-05-21 21:27:20.101484 | train [1][300/745]	Time  0.566 ( 4.306)	Data  0.000 ( 3.740)	Loss 1.1614e+00 (1.2112e+00)	Acc@1  71.88 ( 68.65)	Acc@5  93.75 ( 90.01)
+2023-05-21 21:34:31.457191 | train [1][400/745]	Time  0.579 ( 4.314)	Data  0.000 ( 3.750)	Loss 1.3153e+00 (1.1984e+00)	Acc@1  59.38 ( 68.92)	Acc@5  86.72 ( 90.13)
+2023-05-21 21:42:46.050989 | train [1][500/745]	Time 18.369 ( 4.946)	Data 17.987 ( 4.388)	Loss 1.0732e+00 (1.1887e+00)	Acc@1  67.97 ( 69.08)	Acc@5  92.97 ( 90.23)
+2023-05-21 21:49:53.754156 | train [1][600/745]	Time  0.546 ( 4.277)	Data  0.000 ( 3.717)	Loss 9.4439e-01 (1.1736e+00)	Acc@1  72.66 ( 69.42)	Acc@5  98.44 ( 90.39)
+2023-05-21 21:57:08.600467 | train [1][700/745]	Time  0.618 ( 4.348)	Data  0.000 ( 3.787)	Loss 1.0711e+00 (1.1590e+00)	Acc@1  70.31 ( 69.75)	Acc@5  95.31 ( 90.58)
+2023-05-21 21:59:49.320139 | train [1][745/745]	Time  0.357 ( 3.789)	Data  0.000 ( 3.254)	Loss 1.0620e+00 (1.1532e+00)	Acc@1  71.09 ( 69.82)	Acc@5  89.84 ( 90.63)
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+
+test: Epoch 1
+2023-05-21 22:00:47.801211 | test [1][ 1/89]	Time 57.926 (57.926)	Data 57.559 (57.559)	Loss 1.1970e+00 (1.1970e+00)	Acc@1  62.50 ( 62.50)	Acc@5  92.97 ( 92.97)
+2023-05-21 22:04:39.939248 | test [1][89/89]	Time  0.215 ( 3.259)	Data  0.000 ( 2.763)	Loss 1.5799e+00 (1.2643e+00)	Acc@1  56.47 ( 65.68)	Acc@5  96.47 ( 90.13)
+============================== Epoch 2 ==============================
+LR: [0.01]
+
+train: Epoch 2
+2023-05-21 22:05:50.936794 | train [2][  1/745]	Time 70.128 (70.128)	Data 69.559 (69.559)	Loss 1.0156e+00 (1.0156e+00)	Acc@1  70.31 ( 70.31)	Acc@5  93.75 ( 93.75)
+2023-05-21 22:13:07.440432 | train [2][100/745]	Time  0.542 ( 5.066)	Data  0.000 ( 4.518)	Loss 9.5470e-01 (1.0650e+00)	Acc@1  75.78 ( 72.35)	Acc@5  94.53 ( 91.34)
+2023-05-21 22:20:19.038460 | train [2][200/745]	Time  0.553 ( 4.316)	Data  0.000 ( 3.738)	Loss 8.4315e-01 (1.0543e+00)	Acc@1  75.78 ( 71.96)	Acc@5  96.09 ( 91.60)
+2023-05-21 22:27:30.742004 | train [2][300/745]	Time  0.540 ( 4.317)	Data  0.000 ( 3.771)	Loss 8.7277e-01 (1.0431e+00)	Acc@1  80.47 ( 72.09)	Acc@5  92.19 ( 91.82)
+2023-05-21 22:34:38.530990 | train [2][400/745]	Time  0.503 ( 4.278)	Data  0.000 ( 3.720)	Loss 1.1263e+00 (1.0427e+00)	Acc@1  71.09 ( 72.12)	Acc@5  89.84 ( 91.78)
+2023-05-21 22:42:46.574470 | train [2][500/745]	Time  0.587 ( 4.880)	Data  0.000 ( 4.310)	Loss 9.1449e-01 (1.0374e+00)	Acc@1  77.34 ( 72.24)	Acc@5  95.31 ( 91.81)
+2023-05-21 22:49:57.103433 | train [2][600/745]	Time  0.527 ( 4.305)	Data  0.000 ( 3.743)	Loss 9.6554e-01 (1.0328e+00)	Acc@1  75.78 ( 72.34)	Acc@5  90.62 ( 91.84)
+2023-05-21 22:57:05.067690 | train [2][700/745]	Time  0.664 ( 4.280)	Data  0.000 ( 3.718)	Loss 1.0681e+00 (1.0321e+00)	Acc@1  74.22 ( 72.29)	Acc@5  92.97 ( 91.89)
+2023-05-21 22:59:54.504997 | train [2][745/745]	Time  0.357 ( 3.869)	Data  0.000 ( 3.331)	Loss 8.1677e-01 (1.0285e+00)	Acc@1  77.34 ( 72.37)	Acc@5  93.75 ( 91.93)
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+
+test: Epoch 2
+2023-05-21 23:00:53.533338 | test [2][ 1/89]	Time 58.470 (58.470)	Data 58.001 (58.001)	Loss 1.5159e+00 (1.5159e+00)	Acc@1  55.47 ( 55.47)	Acc@5  89.06 ( 89.06)
+2023-05-21 23:04:44.253969 | test [2][89/89]	Time  0.215 ( 3.249)	Data  0.000 ( 2.743)	Loss 1.9701e+00 (1.2799e+00)	Acc@1  47.06 ( 66.50)	Acc@5  82.35 ( 89.45)
+============================== Epoch 3 ==============================
+LR: [0.01]
+
+train: Epoch 3
+2023-05-21 23:06:01.880816 | train [3][  1/745]	Time 76.787 (76.787)	Data 76.407 (76.407)	Loss 8.0432e-01 (8.0432e-01)	Acc@1  73.44 ( 73.44)	Acc@5  94.53 ( 94.53)
+2023-05-21 23:13:14.024134 | train [3][100/745]	Time  1.007 ( 5.089)	Data  0.000 ( 4.517)	Loss 7.0748e-01 (9.6372e-01)	Acc@1  82.81 ( 73.95)	Acc@5  96.09 ( 92.53)
+2023-05-21 23:20:23.011870 | train [3][200/745]	Time  0.537 ( 4.290)	Data  0.000 ( 3.713)	Loss 9.1929e-01 (9.8182e-01)	Acc@1  75.00 ( 73.28)	Acc@5  94.53 ( 92.52)
+2023-05-21 23:27:37.151083 | train [3][300/745]	Time  0.569 ( 4.341)	Data  0.000 ( 3.778)	Loss 1.0238e+00 (9.8108e-01)	Acc@1  72.66 ( 73.32)	Acc@5  93.75 ( 92.44)
+2023-05-21 23:34:46.392217 | train [3][400/745]	Time  0.537 ( 4.292)	Data  0.000 ( 3.711)	Loss 9.7240e-01 (9.7490e-01)	Acc@1  74.22 ( 73.54)	Acc@5  92.19 ( 92.44)
+2023-05-21 23:42:56.919813 | train [3][500/745]	Time  0.535 ( 4.905)	Data  0.000 ( 4.327)	Loss 8.4460e-01 (9.7351e-01)	Acc@1  73.44 ( 73.60)	Acc@5  94.53 ( 92.48)
+2023-05-21 23:50:05.480980 | train [3][600/745]	Time  0.556 ( 4.286)	Data  0.000 ( 3.702)	Loss 1.0196e+00 (9.7378e-01)	Acc@1  71.88 ( 73.63)	Acc@5  92.19 ( 92.47)
+2023-05-21 23:57:19.302957 | train [3][700/745]	Time  0.514 ( 4.338)	Data  0.000 ( 3.772)	Loss 1.1052e+00 (9.7088e-01)	Acc@1  72.66 ( 73.70)	Acc@5  89.84 ( 92.52)
+2023-05-22 00:00:01.586138 | train [3][745/745]	Time  0.357 ( 3.831)	Data  0.000 ( 3.293)	Loss 9.8700e-01 (9.6929e-01)	Acc@1  77.34 ( 73.75)	Acc@5  88.28 ( 92.54)
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+
+test: Epoch 3
+2023-05-22 00:01:02.661388 | test [3][ 1/89]	Time 60.509 (60.509)	Data 60.045 (60.045)	Loss 1.2965e+00 (1.2965e+00)	Acc@1  59.38 ( 59.38)	Acc@5  92.97 ( 92.97)
+2023-05-22 00:04:50.569037 | test [3][89/89]	Time  0.215 ( 3.241)	Data  0.000 ( 2.734)	Loss 1.4521e+00 (1.3234e+00)	Acc@1  58.82 ( 65.54)	Acc@5  91.76 ( 89.24)
+============================== Epoch 4 ==============================
+LR: [0.003]
+
+train: Epoch 4
+2023-05-22 00:06:01.994399 | train [4][  1/745]	Time 70.797 (70.797)	Data 70.421 (70.421)	Loss 6.9660e-01 (6.9660e-01)	Acc@1  82.03 ( 82.03)	Acc@5  95.31 ( 95.31)
+2023-05-22 00:13:18.933982 | train [4][100/745]	Time  0.738 ( 5.077)	Data  0.000 ( 4.508)	Loss 9.6903e-01 (9.2267e-01)	Acc@1  71.88 ( 74.74)	Acc@5  94.53 ( 92.95)
+2023-05-22 00:20:34.150513 | train [4][200/745]	Time  0.594 ( 4.352)	Data  0.000 ( 3.785)	Loss 1.0465e+00 (9.1775e-01)	Acc@1  73.44 ( 74.95)	Acc@5  89.06 ( 93.16)
+2023-05-22 00:27:42.288450 | train [4][300/745]	Time  0.534 ( 4.281)	Data  0.000 ( 3.700)	Loss 8.9944e-01 (9.1139e-01)	Acc@1  77.34 ( 75.10)	Acc@5  92.97 ( 93.16)
+2023-05-22 00:34:48.685977 | train [4][400/745]	Time  0.577 ( 4.264)	Data  0.000 ( 3.709)	Loss 7.7656e-01 (9.0771e-01)	Acc@1  78.91 ( 75.21)	Acc@5  94.53 ( 93.14)
+2023-05-22 00:42:59.598835 | train [4][500/745]	Time  0.724 ( 4.909)	Data  0.000 ( 4.339)	Loss 9.0317e-01 (9.0945e-01)	Acc@1  75.78 ( 75.20)	Acc@5  95.31 ( 93.06)
+2023-05-22 00:50:15.655468 | train [4][600/745]	Time  0.559 ( 4.361)	Data  0.000 ( 3.786)	Loss 7.9534e-01 (9.0693e-01)	Acc@1  78.12 ( 75.27)	Acc@5  92.97 ( 93.08)
+2023-05-22 00:57:29.095018 | train [4][700/745]	Time  0.548 ( 4.334)	Data  0.000 ( 3.772)	Loss 7.8979e-01 (9.0484e-01)	Acc@1  78.91 ( 75.32)	Acc@5  92.97 ( 93.12)
+2023-05-22 01:00:11.333628 | train [4][745/745]	Time  0.357 ( 3.905)	Data  0.000 ( 3.369)	Loss 9.5095e-01 (9.0599e-01)	Acc@1  74.22 ( 75.30)	Acc@5  89.84 ( 93.13)
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+
+test: Epoch 4
+2023-05-22 01:01:10.491676 | test [4][ 1/89]	Time 58.598 (58.598)	Data 58.216 (58.216)	Loss 1.1497e+00 (1.1497e+00)	Acc@1  67.19 ( 67.19)	Acc@5  90.62 ( 90.62)
+2023-05-22 01:05:02.840057 | test [4][89/89]	Time  0.215 ( 3.269)	Data  0.000 ( 2.778)	Loss 1.4382e+00 (1.2533e+00)	Acc@1  61.18 ( 67.42)	Acc@5  91.76 ( 89.87)
+============================== Epoch 5 ==============================
+LR: [0.003]
+
+train: Epoch 5
+2023-05-22 01:06:15.275583 | train [5][  1/745]	Time 71.446 (71.446)	Data 70.892 (70.892)	Loss 8.8255e-01 (8.8255e-01)	Acc@1  77.34 ( 77.34)	Acc@5  92.97 ( 92.97)
+2023-05-22 01:13:34.489453 | train [5][100/745]	Time  0.645 ( 5.107)	Data  0.000 ( 4.565)	Loss 9.2139e-01 (8.9661e-01)	Acc@1  77.34 ( 75.65)	Acc@5  93.75 ( 93.21)
+2023-05-22 01:20:44.030866 | train [5][200/745]	Time  0.563 ( 4.295)	Data  0.000 ( 3.726)	Loss 8.4426e-01 (8.9555e-01)	Acc@1  77.34 ( 75.64)	Acc@5  95.31 ( 93.25)
+2023-05-22 01:27:56.401014 | train [5][300/745]	Time  0.709 ( 4.324)	Data  0.000 ( 3.756)	Loss 9.3583e-01 (8.8531e-01)	Acc@1  71.88 ( 75.93)	Acc@5  93.75 ( 93.43)
+2023-05-22 01:35:09.071283 | train [5][400/745]	Time  0.566 ( 4.327)	Data  0.000 ( 3.751)	Loss 9.4353e-01 (8.8506e-01)	Acc@1  78.12 ( 76.01)	Acc@5  92.97 ( 93.42)
+2023-05-22 01:43:15.193570 | train [5][500/745]	Time  0.551 ( 4.861)	Data  0.000 ( 4.293)	Loss 7.0388e-01 (8.8581e-01)	Acc@1  79.69 ( 76.03)	Acc@5  96.09 ( 93.39)
+2023-05-22 01:50:34.233976 | train [5][600/745]	Time  0.499 ( 4.390)	Data  0.000 ( 3.835)	Loss 1.0562e+00 (8.8609e-01)	Acc@1  73.44 ( 76.02)	Acc@5  89.06 ( 93.38)
+2023-05-22 01:57:44.514953 | train [5][700/745]	Time  0.434 ( 4.303)	Data  0.000 ( 3.730)	Loss 8.0113e-01 (8.8790e-01)	Acc@1  78.12 ( 75.99)	Acc@5  95.31 ( 93.37)
+2023-05-22 02:00:28.998623 | train [5][745/745]	Time  0.357 ( 3.858)	Data  0.000 ( 3.313)	Loss 9.7273e-01 (8.8714e-01)	Acc@1  70.31 ( 76.01)	Acc@5  92.97 ( 93.37)
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+
+test: Epoch 5
+2023-05-22 02:01:24.439954 | test [5][ 1/89]	Time 54.937 (54.937)	Data 54.589 (54.589)	Loss 1.3560e+00 (1.3560e+00)	Acc@1  56.25 ( 56.25)	Acc@5  90.62 ( 90.62)
+2023-05-22 02:05:19.378289 | test [5][89/89]	Time  0.215 ( 3.257)	Data  0.000 ( 2.756)	Loss 1.6972e+00 (1.2511e+00)	Acc@1  57.65 ( 67.36)	Acc@5  87.06 ( 89.79)
+============================== Epoch 6 ==============================
+LR: [0.003]
+
+train: Epoch 6
+2023-05-22 02:06:30.116585 | train [6][  1/745]	Time 70.113 (70.113)	Data 69.722 (69.722)	Loss 7.2921e-01 (7.2921e-01)	Acc@1  79.69 ( 79.69)	Acc@5  96.88 ( 96.88)
+2023-05-22 02:13:51.811516 | train [6][100/745]	Time  3.686 ( 5.118)	Data  3.103 ( 4.555)	Loss 8.9847e-01 (8.9604e-01)	Acc@1  79.69 ( 75.66)	Acc@5  92.97 ( 93.21)
+2023-05-22 02:21:04.509187 | train [6][200/745]	Time  0.554 ( 4.327)	Data  0.000 ( 3.751)	Loss 8.7844e-01 (8.8004e-01)	Acc@1  76.56 ( 76.04)	Acc@5  92.97 ( 93.50)
+2023-05-22 02:28:15.385137 | train [6][300/745]	Time  0.540 ( 4.309)	Data  0.000 ( 3.723)	Loss 8.4953e-01 (8.8284e-01)	Acc@1  78.12 ( 76.01)	Acc@5  92.97 ( 93.49)
+2023-05-22 02:35:24.232478 | train [6][400/745]	Time  3.003 ( 4.288)	Data  2.551 ( 3.720)	Loss 9.1599e-01 (8.7874e-01)	Acc@1  78.12 ( 76.10)	Acc@5  90.62 ( 93.61)
+2023-05-22 02:43:37.041962 | train [6][500/745]	Time  0.551 ( 4.928)	Data  0.000 ( 4.374)	Loss 8.7453e-01 (8.7903e-01)	Acc@1  78.91 ( 76.04)	Acc@5  93.75 ( 93.57)
+2023-05-22 02:50:50.582008 | train [6][600/745]	Time  4.928 ( 4.335)	Data  4.425 ( 3.785)	Loss 8.6864e-01 (8.8021e-01)	Acc@1  81.25 ( 76.00)	Acc@5  94.53 ( 93.55)
+2023-05-22 02:58:05.874990 | train [6][700/745]	Time  0.546 ( 4.353)	Data  0.000 ( 3.798)	Loss 9.5483e-01 (8.7762e-01)	Acc@1  75.78 ( 76.07)	Acc@5  92.19 ( 93.61)
+2023-05-22 03:00:49.112218 | train [6][745/745]	Time  0.357 ( 3.927)	Data  0.000 ( 3.396)	Loss 8.3762e-01 (8.7798e-01)	Acc@1  76.56 ( 76.05)	Acc@5  93.75 ( 93.57)
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+
+test: Epoch 6
+2023-05-22 03:01:48.956108 | test [6][ 1/89]	Time 59.333 (59.333)	Data 58.830 (58.830)	Loss 1.2567e+00 (1.2567e+00)	Acc@1  63.28 ( 63.28)	Acc@5  93.75 ( 93.75)
+2023-05-22 03:05:40.733323 | test [6][89/89]	Time  0.215 ( 3.271)	Data  0.000 ( 2.781)	Loss 1.7136e+00 (1.2700e+00)	Acc@1  50.59 ( 67.43)	Acc@5  87.06 ( 89.55)
+============================== Epoch 7 ==============================
+LR: [0.003]
+
+train: Epoch 7
+2023-05-22 03:06:51.382274 | train [7][  1/745]	Time 69.862 (69.862)	Data 69.283 (69.283)	Loss 9.4388e-01 (9.4388e-01)	Acc@1  72.66 ( 72.66)	Acc@5  92.19 ( 92.19)
+2023-05-22 03:14:13.620978 | train [7][100/745]	Time  0.815 ( 5.121)	Data  0.000 ( 4.561)	Loss 9.7910e-01 (8.6703e-01)	Acc@1  68.75 ( 75.91)	Acc@5  92.19 ( 93.48)
+2023-05-22 03:21:20.681974 | train [7][200/745]	Time  0.688 ( 4.271)	Data  0.000 ( 3.698)	Loss 1.0294e+00 (8.7020e-01)	Acc@1  74.22 ( 76.14)	Acc@5  89.84 ( 93.45)
+2023-05-22 03:28:31.584475 | train [7][300/745]	Time  0.734 ( 4.309)	Data  0.000 ( 3.741)	Loss 9.8791e-01 (8.7384e-01)	Acc@1  78.12 ( 76.08)	Acc@5  92.19 ( 93.39)
+2023-05-22 03:35:41.997960 | train [7][400/745]	Time  0.706 ( 4.304)	Data  0.000 ( 3.738)	Loss 9.4554e-01 (8.7160e-01)	Acc@1  71.88 ( 76.19)	Acc@5  92.97 ( 93.45)
+2023-05-22 03:43:50.657167 | train [7][500/745]	Time  7.061 ( 4.887)	Data  6.563 ( 4.319)	Loss 6.9958e-01 (8.6979e-01)	Acc@1  81.25 ( 76.27)	Acc@5  94.53 ( 93.49)
+2023-05-22 03:51:04.034993 | train [7][600/745]	Time  0.748 ( 4.334)	Data  0.000 ( 3.773)	Loss 9.4982e-01 (8.6801e-01)	Acc@1  71.09 ( 76.29)	Acc@5  93.75 ( 93.52)
+2023-05-22 03:58:16.405581 | train [7][700/745]	Time  0.715 ( 4.324)	Data  0.000 ( 3.775)	Loss 8.8926e-01 (8.6834e-01)	Acc@1  75.78 ( 76.33)	Acc@5  92.97 ( 93.51)
+2023-05-22 04:00:59.384476 | train [7][745/745]	Time  0.357 ( 3.860)	Data  0.000 ( 3.322)	Loss 7.7857e-01 (8.6819e-01)	Acc@1  77.34 ( 76.30)	Acc@5  93.75 ( 93.54)
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+
+test: Epoch 7
+2023-05-22 04:01:58.960296 | test [7][ 1/89]	Time 59.049 (59.049)	Data 58.529 (58.529)	Loss 1.5727e+00 (1.5727e+00)	Acc@1  53.12 ( 53.12)	Acc@5  85.16 ( 85.16)
+2023-05-22 04:05:49.202191 | test [7][89/89]	Time  0.215 ( 3.250)	Data  0.000 ( 2.750)	Loss 1.5982e+00 (1.2744e+00)	Acc@1  60.00 ( 67.44)	Acc@5  89.41 ( 89.83)
+============================== Epoch 8 ==============================
+LR: [0.0009]
+
+train: Epoch 8
+2023-05-22 04:07:00.214529 | train [8][  1/745]	Time 70.205 (70.205)	Data 69.606 (69.606)	Loss 9.2827e-01 (9.2827e-01)	Acc@1  71.09 ( 71.09)	Acc@5  94.53 ( 94.53)
+2023-05-22 04:14:21.617986 | train [8][100/745]	Time  0.579 ( 5.116)	Data  0.000 ( 4.539)	Loss 8.7674e-01 (8.6516e-01)	Acc@1  76.56 ( 76.52)	Acc@5  91.41 ( 93.34)
+2023-05-22 04:21:30.877054 | train [8][200/745]	Time  0.564 ( 4.293)	Data  0.000 ( 3.718)	Loss 7.4449e-01 (8.4627e-01)	Acc@1  78.91 ( 77.05)	Acc@5  94.53 ( 93.78)
+2023-05-22 04:28:36.390003 | train [8][300/745]	Time  0.672 ( 4.255)	Data  0.000 ( 3.695)	Loss 7.5963e-01 (8.5284e-01)	Acc@1  78.12 ( 76.96)	Acc@5  95.31 ( 93.63)
+2023-05-22 04:35:55.489741 | train [8][400/745]	Time  0.683 ( 4.391)	Data  0.000 ( 3.826)	Loss 7.0069e-01 (8.5198e-01)	Acc@1  80.47 ( 76.88)	Acc@5  95.31 ( 93.66)
+2023-05-22 04:43:58.024963 | train [8][500/745]	Time  0.564 ( 4.825)	Data  0.000 ( 4.278)	Loss 9.5407e-01 (8.5299e-01)	Acc@1  74.22 ( 76.84)	Acc@5  92.97 ( 93.65)
+2023-05-22 04:51:14.014473 | train [8][600/745]	Time  0.667 ( 4.360)	Data  0.000 ( 3.787)	Loss 8.1225e-01 (8.5154e-01)	Acc@1  81.25 ( 76.87)	Acc@5  91.41 ( 93.66)
+2023-05-22 04:58:27.268460 | train [8][700/745]	Time  0.550 ( 4.333)	Data  0.000 ( 3.770)	Loss 9.5256e-01 (8.5097e-01)	Acc@1  78.91 ( 76.92)	Acc@5  90.62 ( 93.66)
+2023-05-22 05:01:12.993845 | train [8][745/745]	Time  0.357 ( 3.833)	Data  0.000 ( 3.295)	Loss 1.0540e+00 (8.5076e-01)	Acc@1  75.00 ( 76.92)	Acc@5  90.62 ( 93.67)
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+
+test: Epoch 8
+2023-05-22 05:02:10.669057 | test [8][ 1/89]	Time 57.148 (57.148)	Data 56.629 (56.629)	Loss 1.3689e+00 (1.3689e+00)	Acc@1  61.72 ( 61.72)	Acc@5  90.62 ( 90.62)
+2023-05-22 05:06:04.126361 | test [8][89/89]	Time  0.215 ( 3.265)	Data  0.000 ( 2.761)	Loss 1.4697e+00 (1.2588e+00)	Acc@1  61.18 ( 68.03)	Acc@5  87.06 ( 90.03)
+============================== Epoch 9 ==============================
+LR: [0.0009]
+
+train: Epoch 9
+2023-05-22 05:07:24.674623 | train [9][  1/745]	Time 79.793 (79.793)	Data 79.351 (79.351)	Loss 8.1788e-01 (8.1788e-01)	Acc@1  78.12 ( 78.12)	Acc@5  96.09 ( 96.09)
+2023-05-22 05:14:29.202042 | train [9][100/745]	Time  0.605 ( 5.043)	Data  0.056 ( 4.499)	Loss 7.5875e-01 (8.3966e-01)	Acc@1  78.91 ( 77.32)	Acc@5  95.31 ( 93.94)
+2023-05-22 05:21:50.036972 | train [9][200/745]	Time  0.582 ( 4.408)	Data  0.000 ( 3.838)	Loss 1.0290e+00 (8.4567e-01)	Acc@1  75.78 ( 77.23)	Acc@5  90.62 ( 93.83)
+2023-05-22 05:29:00.934507 | train [9][300/745]	Time  0.566 ( 4.309)	Data  0.000 ( 3.725)	Loss 8.4909e-01 (8.5055e-01)	Acc@1  73.44 ( 77.01)	Acc@5  94.53 ( 93.75)
+2023-05-22 05:36:12.785963 | train [9][400/745]	Time  0.543 ( 4.318)	Data  0.000 ( 3.736)	Loss 7.2357e-01 (8.4904e-01)	Acc@1  80.47 ( 77.04)	Acc@5  96.09 ( 93.70)
+2023-05-22 05:44:20.083488 | train [9][500/745]	Time  0.577 ( 4.873)	Data  0.000 ( 4.294)	Loss 9.6058e-01 (8.4755e-01)	Acc@1  76.56 ( 77.11)	Acc@5  90.62 ( 93.71)
+2023-05-22 05:51:27.310673 | train [9][600/745]	Time  1.017 ( 4.272)	Data  0.592 ( 3.701)	Loss 7.6121e-01 (8.4648e-01)	Acc@1  82.03 ( 77.10)	Acc@5  95.31 ( 93.80)
+2023-05-22 05:58:39.711469 | train [9][700/745]	Time  0.571 ( 4.324)	Data  0.000 ( 3.773)	Loss 7.2992e-01 (8.4564e-01)	Acc@1  82.03 ( 77.11)	Acc@5  94.53 ( 93.83)
+2023-05-22 06:01:31.478220 | train [9][745/745]	Time  0.357 ( 3.994)	Data  0.000 ( 3.460)	Loss 8.7277e-01 (8.4416e-01)	Acc@1  79.69 ( 77.13)	Acc@5  91.41 ( 93.87)
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/transforms/functional.py:442: UserWarning: Argument 'interpolation' of type int is deprecated since 0.13 and will be removed in 0.15. Please use InterpolationMode enum.
+  warnings.warn(
+
+test: Epoch 9
+2023-05-22 06:02:31.985426 | test [9][ 1/89]	Time 60.011 (60.011)	Data 59.455 (59.455)	Loss 1.3517e+00 (1.3517e+00)	Acc@1  56.25 ( 56.25)	Acc@5  89.84 ( 89.84)
+2023-05-22 06:06:22.107061 | test [9][89/89]	Time  0.215 ( 3.260)	Data  0.000 ( 2.759)	Loss 1.5715e+00 (1.2590e+00)	Acc@1  58.82 ( 67.66)	Acc@5  89.41 ( 89.79)
+
+============================== Final evaluation ==============================
+
+test_dense: Epoch 10
+2023-05-22 06:06:57.070385 | test_dense [10][  1/316]	Time 32.592 (32.592)	Data 32.232 (32.232)	Loss 1.1575e+00 (1.1575e+00)	Acc@1  50.00 ( 50.00)	Acc@5 100.00 (100.00)
+2023-05-22 06:09:36.729511 | test_dense [10][100/316]	Time  1.777 ( 1.922)	Data  1.419 ( 1.405)	Loss 6.4096e-01 (1.1190e+00)	Acc@1  75.00 ( 76.75)	Acc@5 100.00 ( 94.50)
+2023-05-22 06:12:59.804378 | test_dense [10][200/316]	Time  0.517 ( 2.031)	Data  0.000 ( 1.514)	Loss 1.7498e-01 (1.3230e+00)	Acc@1 100.00 ( 74.50)	Acc@5 100.00 ( 91.88)
+2023-05-22 06:16:14.420405 | test_dense [10][300/316]	Time  0.311 ( 1.946)	Data  0.000 ( 1.434)	Loss 1.1862e+00 (1.2567e+00)	Acc@1  75.00 ( 76.11)	Acc@5 100.00 ( 92.83)
+2023-05-22 06:16:19.021248 | test_dense [10][316/316]	Time  0.076 ( 1.667)	Data  0.000 ( 1.195)	Loss 2.0381e+00 (1.2706e+00)	Acc@1  66.67 ( 75.60)	Acc@5 100.00 ( 92.78)
+Video@1:  75.60
+Video@5:  92.78

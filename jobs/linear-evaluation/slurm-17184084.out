@@ -1,0 +1,262 @@
+-----<linear evaluation - ucf - tclr>-----
+==============================   SLURM   ==============================
+SLURM_MPI_TYPE                : pmix_v3
+SLURM_NODEID                  : 0
+SLURM_TASK_PID                : 4021828
+SLURM_PRIO_PROCESS            : 0
+SLURM_SUBMIT_DIR              : /lustre06/project/6061875/sdastani/SSL_video/jobs/linear-evaluation
+SLURM_CPUS_PER_TASK           : 1
+SLURM_PROCID                  : 0
+SLURM_JOB_GID                 : 3121684
+SLURMD_NODENAME               : ng10703
+RSNT_SLURM_MPI_TYPE           : pmix_v3
+SLURM_TASKS_PER_NODE          : 1
+SLURM_NNODES                  : 1
+SLURM_TMPDIR                  : /localscratch/sdastani.17184084.0
+SLURM_NTASKS_PER_NODE         : 1
+SLURM_JOB_NODELIST            : ng10703
+SLURM_CLUSTER_NAME            : narval
+SLURM_NODELIST                : ng10703
+SLURM_GPUS_ON_NODE            : 1
+SLURM_NTASKS                  : 1
+SLURM_JOB_CPUS_PER_NODE       : 1
+SLURM_TOPOLOGY_ADDR           : ihpc207u29.ihpc108u24.ng10703
+SLURM_WORKING_CLUSTER         : narval:10.100.129.45:6817:9728:109
+SLURM_JOB_NAME                : brats
+SLURM_JOB_GPUS                : 0
+SLURM_JOBID                   : 17184084
+SLURM_CONF                    : /etc/slurm/slurm.conf
+SLURM_NODE_ALIASES            : (null)
+SLURM_JOB_QOS                 : normal
+SLURM_TOPOLOGY_ADDR_PATTERN   : switch.switch.node
+SLURM_CPUS_ON_NODE            : 1
+SLURM_JOB_NUM_NODES           : 1
+SLURM_MEM_PER_NODE            : 32768
+SLURM_JOB_UID                 : 3121684
+SLURM_JOB_PARTITION           : gpubase_bygpu_b3
+SLURM_SCRIPT_CONTEXT          : prolog_task
+SLURM_JOB_USER                : sdastani
+SLURM_NPROCS                  : 1
+SLURM_SUBMIT_HOST             : narval4.narval.calcul.quebec
+SLURM_JOB_ACCOUNT             : rrg-ebrahimi_gpu
+SLURM_GTIDS                   : 0
+SLURM_RESTART_COUNT           : 0
+SLURM_JOB_ID                  : 17184084
+SLURM_LOCALID                 : 0
+==============================   Config   ==============================
+required_devices: 8
+resume: False
+no_test: False
+test_only: False
+debug: False
+seed: 0
+distributed: False
+test_freq: 5
+num_workers: 16
+benchmark
+  name: ucf101-linear_112X112x32
+dataset
+  name: ucf101
+  fold: 1
+  batch_size: 128
+  clip_duration: 2.0
+  video_fps: 16.0
+  crop_size: 112
+  transform: msc+color
+  min_area: 0.08
+  color: [0.4, 0.4, 0.4, 0.2]
+  switch_channels: True
+  normalize: False
+  num_of_examples: 0
+  train
+    split: trainlist{fold:02d}
+    mode: clip
+    clips_per_video: 10
+    use_augmentation: True
+    use_shuffle: True
+    drop_last: True
+  test
+    split: testlist{fold:02d}
+    mode: clip
+    clips_per_video: 3
+    use_augmentation: False
+    use_shuffle: False
+    drop_last: False
+  test_dense
+    split: testlist{fold:02d}
+    mode: video
+    clips_per_video: 10
+    use_augmentation: False
+    use_shuffle: False
+    drop_last: False
+optimizer
+  name: adam
+  num_epochs: 10
+  weight_decay: 0.0
+  warmup_classifier: False
+  lr
+    name: multistep
+    base_lr: 0.01
+    gamma: 0.3
+    milestones: [4, 8, 10]
+model
+  args
+    n_classes: 101
+    feat_dim: 512
+::::::::::::::::::::::::::::::::::::::::::::::::::::::::: Loading tclr checkpoint ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+Checkpoint Path: ../checkpoints_pretraining/tclr/rpd18kin400.pth
+Checkpoint Message: _IncompatibleKeys(missing_keys=['fc.weight', 'fc.bias'], unexpected_keys=['module.0.fc.weight', 'module.0.fc.bias', 'module.1.fc1.weight', 'module.1.fc1.bias', 'module.1.bn1.weight', 'module.1.bn1.bias', 'module.1.bn1.running_mean', 'module.1.bn1.running_var', 'module.1.bn1.num_batches_tracked', 'module.1.bn2.weight', 'module.1.bn2.bias', 'module.1.bn2.running_mean', 'module.1.bn2.running_var', 'module.1.bn2.num_batches_tracked', 'module.1.fc2.weight'])
+==============================   Parameters   ==============================
+stem.0.weight                                                          | Frozen     | 45 x 3 x 1 x 7 x 7             | 6615
+stem.1.weight                                                          | Frozen     | 45                             | 45
+stem.1.bias                                                            | Frozen     | 45                             | 45
+stem.3.weight                                                          | Frozen     | 64 x 45 x 3 x 1 x 1            | 8640
+stem.4.weight                                                          | Frozen     | 64                             | 64
+stem.4.bias                                                            | Frozen     | 64                             | 64
+layer1.0.conv1.0.0.weight                                              | Frozen     | 144 x 64 x 1 x 3 x 3           | 82944
+layer1.0.conv1.0.1.weight                                              | Frozen     | 144                            | 144
+layer1.0.conv1.0.1.bias                                                | Frozen     | 144                            | 144
+layer1.0.conv1.0.3.weight                                              | Frozen     | 64 x 144 x 3 x 1 x 1           | 27648
+layer1.0.conv1.1.weight                                                | Frozen     | 64                             | 64
+layer1.0.conv1.1.bias                                                  | Frozen     | 64                             | 64
+layer1.0.conv2.0.0.weight                                              | Frozen     | 144 x 64 x 1 x 3 x 3           | 82944
+layer1.0.conv2.0.1.weight                                              | Frozen     | 144                            | 144
+layer1.0.conv2.0.1.bias                                                | Frozen     | 144                            | 144
+layer1.0.conv2.0.3.weight                                              | Frozen     | 64 x 144 x 3 x 1 x 1           | 27648
+layer1.0.conv2.1.weight                                                | Frozen     | 64                             | 64
+layer1.0.conv2.1.bias                                                  | Frozen     | 64                             | 64
+layer1.1.conv1.0.0.weight                                              | Frozen     | 144 x 64 x 1 x 3 x 3           | 82944
+layer1.1.conv1.0.1.weight                                              | Frozen     | 144                            | 144
+layer1.1.conv1.0.1.bias                                                | Frozen     | 144                            | 144
+layer1.1.conv1.0.3.weight                                              | Frozen     | 64 x 144 x 3 x 1 x 1           | 27648
+layer1.1.conv1.1.weight                                                | Frozen     | 64                             | 64
+layer1.1.conv1.1.bias                                                  | Frozen     | 64                             | 64
+layer1.1.conv2.0.0.weight                                              | Frozen     | 144 x 64 x 1 x 3 x 3           | 82944
+layer1.1.conv2.0.1.weight                                              | Frozen     | 144                            | 144
+layer1.1.conv2.0.1.bias                                                | Frozen     | 144                            | 144
+layer1.1.conv2.0.3.weight                                              | Frozen     | 64 x 144 x 3 x 1 x 1           | 27648
+layer1.1.conv2.1.weight                                                | Frozen     | 64                             | 64
+layer1.1.conv2.1.bias                                                  | Frozen     | 64                             | 64
+layer2.0.conv1.0.0.weight                                              | Frozen     | 230 x 64 x 1 x 3 x 3           | 132480
+layer2.0.conv1.0.1.weight                                              | Frozen     | 230                            | 230
+layer2.0.conv1.0.1.bias                                                | Frozen     | 230                            | 230
+layer2.0.conv1.0.3.weight                                              | Frozen     | 128 x 230 x 3 x 1 x 1          | 88320
+layer2.0.conv1.1.weight                                                | Frozen     | 128                            | 128
+layer2.0.conv1.1.bias                                                  | Frozen     | 128                            | 128
+layer2.0.conv2.0.0.weight                                              | Frozen     | 230 x 128 x 1 x 3 x 3          | 264960
+layer2.0.conv2.0.1.weight                                              | Frozen     | 230                            | 230
+layer2.0.conv2.0.1.bias                                                | Frozen     | 230                            | 230
+layer2.0.conv2.0.3.weight                                              | Frozen     | 128 x 230 x 3 x 1 x 1          | 88320
+layer2.0.conv2.1.weight                                                | Frozen     | 128                            | 128
+layer2.0.conv2.1.bias                                                  | Frozen     | 128                            | 128
+layer2.0.downsample.0.weight                                           | Frozen     | 128 x 64 x 1 x 1 x 1           | 8192
+layer2.0.downsample.1.weight                                           | Frozen     | 128                            | 128
+layer2.0.downsample.1.bias                                             | Frozen     | 128                            | 128
+layer2.1.conv1.0.0.weight                                              | Frozen     | 288 x 128 x 1 x 3 x 3          | 331776
+layer2.1.conv1.0.1.weight                                              | Frozen     | 288                            | 288
+layer2.1.conv1.0.1.bias                                                | Frozen     | 288                            | 288
+layer2.1.conv1.0.3.weight                                              | Frozen     | 128 x 288 x 3 x 1 x 1          | 110592
+layer2.1.conv1.1.weight                                                | Frozen     | 128                            | 128
+layer2.1.conv1.1.bias                                                  | Frozen     | 128                            | 128
+layer2.1.conv2.0.0.weight                                              | Frozen     | 288 x 128 x 1 x 3 x 3          | 331776
+layer2.1.conv2.0.1.weight                                              | Frozen     | 288                            | 288
+layer2.1.conv2.0.1.bias                                                | Frozen     | 288                            | 288
+layer2.1.conv2.0.3.weight                                              | Frozen     | 128 x 288 x 3 x 1 x 1          | 110592
+layer2.1.conv2.1.weight                                                | Frozen     | 128                            | 128
+layer2.1.conv2.1.bias                                                  | Frozen     | 128                            | 128
+layer3.0.conv1.0.0.weight                                              | Frozen     | 460 x 128 x 1 x 3 x 3          | 529920
+layer3.0.conv1.0.1.weight                                              | Frozen     | 460                            | 460
+layer3.0.conv1.0.1.bias                                                | Frozen     | 460                            | 460
+layer3.0.conv1.0.3.weight                                              | Frozen     | 256 x 460 x 3 x 1 x 1          | 353280
+layer3.0.conv1.1.weight                                                | Frozen     | 256                            | 256
+layer3.0.conv1.1.bias                                                  | Frozen     | 256                            | 256
+layer3.0.conv2.0.0.weight                                              | Frozen     | 460 x 256 x 1 x 3 x 3          | 1059840
+layer3.0.conv2.0.1.weight                                              | Frozen     | 460                            | 460
+layer3.0.conv2.0.1.bias                                                | Frozen     | 460                            | 460
+layer3.0.conv2.0.3.weight                                              | Frozen     | 256 x 460 x 3 x 1 x 1          | 353280
+layer3.0.conv2.1.weight                                                | Frozen     | 256                            | 256
+layer3.0.conv2.1.bias                                                  | Frozen     | 256                            | 256
+layer3.0.downsample.0.weight                                           | Frozen     | 256 x 128 x 1 x 1 x 1          | 32768
+layer3.0.downsample.1.weight                                           | Frozen     | 256                            | 256
+layer3.0.downsample.1.bias                                             | Frozen     | 256                            | 256
+layer3.1.conv1.0.0.weight                                              | Frozen     | 576 x 256 x 1 x 3 x 3          | 1327104
+layer3.1.conv1.0.1.weight                                              | Frozen     | 576                            | 576
+layer3.1.conv1.0.1.bias                                                | Frozen     | 576                            | 576
+layer3.1.conv1.0.3.weight                                              | Frozen     | 256 x 576 x 3 x 1 x 1          | 442368
+layer3.1.conv1.1.weight                                                | Frozen     | 256                            | 256
+layer3.1.conv1.1.bias                                                  | Frozen     | 256                            | 256
+layer3.1.conv2.0.0.weight                                              | Frozen     | 576 x 256 x 1 x 3 x 3          | 1327104
+layer3.1.conv2.0.1.weight                                              | Frozen     | 576                            | 576
+layer3.1.conv2.0.1.bias                                                | Frozen     | 576                            | 576
+layer3.1.conv2.0.3.weight                                              | Frozen     | 256 x 576 x 3 x 1 x 1          | 442368
+layer3.1.conv2.1.weight                                                | Frozen     | 256                            | 256
+layer3.1.conv2.1.bias                                                  | Frozen     | 256                            | 256
+layer4.0.conv1.0.weight                                                | Frozen     | 512 x 256 x 3 x 3 x 3          | 3538944
+layer4.0.conv1.1.weight                                                | Frozen     | 512                            | 512
+layer4.0.conv1.1.bias                                                  | Frozen     | 512                            | 512
+layer4.0.conv2.0.0.weight                                              | Frozen     | 921 x 512 x 1 x 3 x 3          | 4243968
+layer4.0.conv2.0.1.weight                                              | Frozen     | 921                            | 921
+layer4.0.conv2.0.1.bias                                                | Frozen     | 921                            | 921
+layer4.0.conv2.0.3.weight                                              | Frozen     | 512 x 921 x 3 x 1 x 1          | 1414656
+layer4.0.conv2.1.weight                                                | Frozen     | 512                            | 512
+layer4.0.conv2.1.bias                                                  | Frozen     | 512                            | 512
+layer4.0.downsample.0.weight                                           | Frozen     | 512 x 256 x 1 x 1 x 1          | 131072
+layer4.0.downsample.1.weight                                           | Frozen     | 512                            | 512
+layer4.0.downsample.1.bias                                             | Frozen     | 512                            | 512
+layer4.1.conv1.0.0.weight                                              | Frozen     | 1152 x 512 x 1 x 3 x 3         | 5308416
+layer4.1.conv1.0.1.weight                                              | Frozen     | 1152                           | 1152
+layer4.1.conv1.0.1.bias                                                | Frozen     | 1152                           | 1152
+layer4.1.conv1.0.3.weight                                              | Frozen     | 512 x 1152 x 3 x 1 x 1         | 1769472
+layer4.1.conv1.1.weight                                                | Frozen     | 512                            | 512
+layer4.1.conv1.1.bias                                                  | Frozen     | 512                            | 512
+layer4.1.conv2.0.0.weight                                              | Frozen     | 1152 x 512 x 1 x 3 x 3         | 5308416
+layer4.1.conv2.0.1.weight                                              | Frozen     | 1152                           | 1152
+layer4.1.conv2.0.1.bias                                                | Frozen     | 1152                           | 1152
+layer4.1.conv2.0.3.weight                                              | Frozen     | 512 x 1152 x 3 x 1 x 1         | 1769472
+layer4.1.conv2.1.weight                                                | Frozen     | 512                            | 512
+layer4.1.conv2.1.bias                                                  | Frozen     | 512                            | 512
+fc.weight                                                              | Trainable  | 400 x 512                      | 204800
+fc.bias                                                                | Trainable  | 400                            | 400
+
+config {'name': 'adam', 'num_epochs': 10, 'weight_decay': 0.0, 'warmup_classifier': False, 'lr': {'name': 'multistep', 'base_lr': 0.01, 'gamma': 0.3, 'milestones': [4, 8, 10]}}
+==============================   Train DB   ==============================
+False
+UCF-101
+ - Root: /home/sdastani/scratch/datasets/ucf101
+ - Subset: trainlist01
+ - Num videos: 9537
+ - Num samples: 95370
+ - Example video: /home/sdastani/scratch/datasets/ucf101/ApplyEyeMakeup/v_ApplyEyeMakeup_g08_c01.avi
+
+==============================   Test DB   ==============================
+False
+UCF-101
+ - Root: /home/sdastani/scratch/datasets/ucf101
+ - Subset: testlist01
+ - Num videos: 3783
+ - Num samples: 11349
+ - Example video: /home/sdastani/scratch/datasets/ucf101/ApplyEyeMakeup/v_ApplyEyeMakeup_g01_c01.avi
+
+==============================   Dense DB   ==============================
+False
+UCF-101
+ - Root: /home/sdastani/scratch/datasets/ucf101
+ - Subset: testlist01
+ - Num videos: 3783
+ - Num samples: 37830
+ - Example video: /home/sdastani/scratch/datasets/ucf101/ApplyEyeMakeup/v_ApplyEyeMakeup_g01_c01.avi
+
+==============================   Training   ==============================
+============================== Epoch 0 ==============================
+LR: [0.01]
+
+train: Epoch 0
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/models/_utils.py:208: UserWarning: The parameter 'pretrained' is deprecated since 0.13 and may be removed in the future, please use 'weights' instead.
+  warnings.warn(
+/home/sdastani/env3.8/lib/python3.8/site-packages/torchvision/models/_utils.py:223: UserWarning: Arguments other than a weight enum or `None` for 'weights' are deprecated since 0.13 and may be removed in the future. The current behavior is equivalent to passing `weights=None`.
+  warnings.warn(msg)
+/home/sdastani/env3.8/lib/python3.8/site-packages/torch/utils/data/dataloader.py:554: UserWarning: This DataLoader will create 16 worker processes in total. Our suggested max number of worker in current system is 1, which is smaller than what this DataLoader is going to create. Please be aware that excessive worker creation might get DataLoader running slow or even freeze, lower the worker number to avoid potential slowness/freeze if necessary.
+  warnings.warn(_create_warning_msg(
+2023-05-22 18:00:49.485020 | train [0][  1/745]	Time 237.167 (237.167)	Data 187.621 (187.621)	Loss 6.0280e+00 (6.0280e+00)	Acc@1   0.00 (  0.00)	Acc@5   1.56 (  1.56)
+/var/spool/slurmd/job17184084/slurm_script: line 23: 4021830 Killed                  python linear_eval.py configs/benchmark/ucf/112x112x32-fold1-linear_tclr.yaml --pretext-model-name tclr --pretext-model-path ../checkpoints_pretraining/tclr/rpd18kin400.pth --finetune-ckpt-path ./checkpoints/tclr/
+slurmstepd: error: Detected 1 oom-kill event(s) in StepId=17184084.batch. Some of your processes may have been killed by the cgroup out-of-memory handler.
