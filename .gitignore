@@ -8,6 +8,8 @@ checkpoints/
 JPEGImages/
 datasets/
 out/
+jobs/
+taghsim/
 
 */*/__pycache__
 */*/*__pycache__*

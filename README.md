@@ -16,13 +16,12 @@ Download Kinetics-400 pretrained R(2+1D)-18 weights for each method from [here](
 
 The datasets can be downloaded from the following links (The annotations is provided for each dataset in the ./data/ directory):
 
-* [UCF101 ](http://crcv.ucf.edu/data/UCF101.php)
-Download the dataset and unrar it using `7z x UC101.zip`.
+* [UCF101 ](http://crcv.ucf.edu/data/UCF101.php)\
+    Download the dataset and unrar it using `7z x UC101.zip`.
 * [Something_something_v2](https://developer.qualcomm.com/software/ai-datasets/something-something)
-* [NTU-60](https://rose1.ntu.edu.sg/dataset/actionRecognition/)
 * [Fine-Gym v_1.0](https://sdolivia.github.io/FineGym/)
 
-* [AVA preprocessing](https://research.google.com/ava/download.html):\
+* [AVA preprocessing](https://research.google.com/ava/download.html)\
     First, you need to create a symlink to the root dataset folder into the repo. For e.g., if you store all your datasets at `/path/to/datasets/`, then,
     ```sh
     # make sure you are inside the `SlowFast-ssl-vssl/` folder in the repo
@@ -53,7 +52,7 @@ Download the dataset and unrar it using `7z x UC101.zip`.
 
     5. Setup exception videos that may have failed the first time. For me, there was this video `I8j6Xq2B5ys.mp4` that failed the first time. See `scripts/prepare-ava/exception.sh` to re-run the steps for such videos.
 
-* [Charades](https://prior.allenai.org/projects/charades) dataset.
+* [Charades](https://prior.allenai.org/projects/charades)
 
     1. Download and unzip RGB frames
     ```sh
@@ -65,6 +64,8 @@ Download the dataset and unrar it using `7z x UC101.zip`.
     ```sh
     bash download_annotations.sh
     ```
+
+* After downloading the datasets from the original sources, please update the data and annotation paths for each dataset in the respective dataloader scripts e.g datasets/ucf.py, datasets/something.py, datasets/gym_99.py, etc.
 
 ## Experiments
 
@@ -128,6 +129,7 @@ python finetune.py configs/benchmark/ucf/112x112x32-fold1_1000_examples.yaml   -
 #set test_only flag to true in the  config file and run
 python test.py configs/benchmark/gym_set_FX_S1/112x112x32.yaml   --pretext-model-name  supervised --pretext-model-path ../checkpoints_pretraining/fully_supervised_kinetics/r2plus1d_18-91a641e6.pth 
 ```
+
 ### IV. Downstream Task-shift
 
 #### In-domain
@@ -230,7 +232,7 @@ python test.py configs/benchmark/gym_set_FX_S1/112x112x32.yaml   --pretext-model
 
 ### Citation
 
-If you use our work or code, kindly consider citing our paper:
+Work is from:
 ```
 @inproceedings{thoker2022severe,
   author    = {Thoker, Fida Mohammad and Doughty, Hazel and Bagad, Piyush and Snoek, Cees},
