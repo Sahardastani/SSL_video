@@ -30,7 +30,7 @@ def downscale_clip_wrapper(file_name):
 
 if __name__ == '__main__':
     import sys 
-    sys.path.append('/home/sdastani/projects/rrg-ebrahimi/sdastani/SSL_video')
+    sys.path.append('/home/sdastani/projects/rrg-ebrahimi/sdastani/new/SSL_video')
 
     from src.datasets.parser import parse_args, load_config
     from tqdm import tqdm
@@ -40,7 +40,7 @@ if __name__ == '__main__':
     config = load_config(args)
 
     root_path = config.DATA.PATH_TO_DATA_DIR
-    split = "test"
+    split = "val"
 
     folder_path = f'{root_path}/{split}'
     output_path = f'{root_path}/{split}_256'

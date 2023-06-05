@@ -10,7 +10,7 @@ import torchvision
 import kornia
 
 import sys 
-sys.path.append('/home/sdastani/projects/rrg-ebrahimi/sdastani/SSL_video')
+sys.path.append('/home/sdastani/projects/rrg-ebrahimi/sdastani/new/SSL_video/')
 
 from src.datasets.transform import resize
 from src.datasets.data_utils import get_random_sampling_rate, tensor_normalize, spatial_sampling, pack_pathway_output
@@ -364,15 +364,15 @@ if __name__ == '__main__':
     config = load_config(args)
     config.DATA.PATH_TO_DATA_DIR = "k400/annotations"
     config.DATA.PATH_PREFIX = "k400"
-    # dataset = Kinetics(cfg=config, mode="val", num_retries=10)
-    dataset = Kinetics(cfg=config, mode="train", num_retries=10, get_flow=False)
+    dataset = Kinetics(cfg=config, mode="val", num_retries=10)
+    # dataset = Kinetics(cfg=config, mode="train", num_retries=10, get_flow=False)
     print(f"Loaded val dataset of length: {len(dataset)}")
     dataloader = torch.utils.data.DataLoader(dataset=dataset, batch_size=5)
     for idx, i in enumerate(dataloader):
         print([x.shape for x in i[0]], i[1:3])#, [x.shape for x in i[3]['flow']])
         break
 
-    do_vis = True
+    do_vis = False
     if do_vis:
         from PIL import Image
         from transform import undo_normalize

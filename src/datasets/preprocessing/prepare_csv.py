@@ -2,7 +2,7 @@ import os
 import pandas as pd
 
 import sys 
-sys.path.append('/home/sdastani/projects/rrg-ebrahimi/sdastani/SSL_video')
+sys.path.append('/home/sdastani/projects/rrg-ebrahimi/sdastani/new/SSL_video')
 
 from src.datasets.parser import parse_args, load_config
 from tqdm import tqdm
@@ -15,7 +15,7 @@ root_path = config.DATA.PATH_TO_DATA_DIR
 split = 'test'
 
 # Path to the directory containing the video files
-video_directory = config.DATA.PATH_TO_DATA_DIR + split + '_256'
+video_directory = config.DATA.PATH_TO_DATA_DIR + split
 
 # Path to the input CSV file
 input_file = config.DATA.PATH_TO_DATA_DIR + 'annotations/' + split + '.csv'

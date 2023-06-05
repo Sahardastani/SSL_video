@@ -1,5 +1,5 @@
 # SSL_video
-hello
+
 ## Dataset Preparation
 
 ### Download Videos
@@ -16,6 +16,10 @@ hello
     ```
     bash ./k400_extractor.sh
     ```
+### Prerequisite
+* Replace `DATA.PATH_TO_DATA_DIR` in [TimeSformer_divST_8x32_224.yaml](src/configs/TimeSformer_divST_8x32_224.yaml) with your data directory.
+
+* Append your current project direcotry in [downscale.py](src/datasets/preprocessing/downscale.py), [prepare_csv.py](src/datasets/preprocessing/prepare_csv.py), and [kinetics.py](src/datasets/kinetics.py) using `sys.path.append('current/project/directory')`. Replace it with your directory.
 
 ### Resize Videos
 
@@ -23,6 +27,7 @@ hello
     ```
     python src/datasets/preprocessing/downscale.py
     ```
+    Remember to delete the original video folders and rename each resulting folders from `split_256` to `split`.
 
 ### Create CSV files
 
@@ -30,3 +35,12 @@ hello
     python src/datasets/preprocessing/prepare_csv.py 
     ```
 
+## Test the Dataloader
+* **Train**: Make sure `do_vis = True` for visualization.
+    ``` 
+    dataset = Kinetics(cfg=config, mode="train", num_retries=10, get_flow=False) 
+    ```
+* **Val**: Make sure `do_vis = False`, since it designed for train dataloader.
+    ``` 
+    dataset = Kinetics(cfg=config, mode="val", num_retries=10)
+    ```
