@@ -23,7 +23,7 @@
 
 ### Resize Videos
 
-* For train, val, and test repeat the following command (change the split tag each time)
+* Although this step is optional, it can significantly accelerate the decoding process. For train, val, and test repeat the following command (change the split tag each time)
     ```
     python src/datasets/preprocessing/downscale.py
     ```
