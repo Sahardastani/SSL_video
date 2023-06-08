@@ -5,9 +5,8 @@ mlruns
 */outputs/
 data/
 checkpoints/
-JPEGImages/
-datasets/
-out/
+jobs/
+k400/
 
 */*/__pycache__
 */*/*__pycache__*
