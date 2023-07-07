@@ -9,14 +9,11 @@ import torch.utils.data
 import torchvision
 import kornia
 
-import sys 
-sys.path.append('/home/sdastani/projects/rrg-ebrahimi/sdastani/new/SSL_video/')
-
-from src.datasets.transform import resize
-from src.datasets.data_utils import get_random_sampling_rate, tensor_normalize, spatial_sampling, pack_pathway_output
-from src.datasets.decoder import decode
-from src.datasets.video_container import get_video_container
-from src.datasets.transform import VideoDataAugmentationDINO
+from datasets.transform import resize
+from datasets.data_utils import get_random_sampling_rate, tensor_normalize, spatial_sampling, pack_pathway_output
+from datasets.decoder import decode
+from datasets.video_container import get_video_container
+from datasets.transform import VideoDataAugmentationDINO
 from einops import rearrange
 
 
@@ -212,7 +209,6 @@ class Kinetics(torch.utils.data.Dataset):
                         self._path_to_videos[index], e
                     )
                 )
-
             # Select a random video if the current video was not able to access.
             if video_container is None:
                 warnings.warn(
@@ -240,7 +236,7 @@ class Kinetics(torch.utils.data.Dataset):
                 two_token=self.cfg.MODEL.TWO_TOKEN,
                 rand_fr=self.cfg.DATA.RAND_FR
             )
-            
+
             # If decoding failed (wrong format, video is too short, and etc),
             # select another video.
             if frames is None:
@@ -310,12 +306,12 @@ class Kinetics(torch.utils.data.Dataset):
 
                     ).long(),
                 ) for x in frames]
-                
+
             meta_data = {}
             if self.get_flow:
                 assert self.mode == "train", "flow only for train"
                 try:
-                    flow_path = self._path_to_videos[index].replace("train", "train_flow")[:-4]
+                    flow_path = self._path_to_videos[index].replace("train_d256", "train_flow")[:-4]
                     flow_tensor = self.get_flow_from_folder(flow_path)
                     flow_tensor = kornia.filters.sobel(flow_tensor)
                     if self.cfg.DATA.NO_FLOW_AUG:
@@ -356,20 +352,21 @@ if __name__ == '__main__':
 
     # import torch
     # from timesformer.datasets import Kinetics
-    from src.datasets.parser import parse_args, load_config
+    from utils.parser import parse_args, load_config
     from tqdm import tqdm
 
     args = parse_args()
-    args.cfg_file = "src/configs/TimeSformer_divST_8x32_224.yaml"
+    args.cfg_file = "/home/kanchanaranasinghe/repo/timesformer/configs/Kinetics/TimeSformer_divST_8x32_224.yaml"
     config = load_config(args)
-    config.DATA.PATH_TO_DATA_DIR = "k400/annotations"
-    config.DATA.PATH_PREFIX = "k400"
-    dataset = Kinetics(cfg=config, mode="val", num_retries=10)
-    # dataset = Kinetics(cfg=config, mode="train", num_retries=10, get_flow=False)
-    print(f"Loaded val dataset of length: {len(dataset)}")
-    dataloader = torch.utils.data.DataLoader(dataset=dataset, batch_size=5)
+    config.DATA.PATH_TO_DATA_DIR = "/home/kanchanaranasinghe/data/kinetics400/new_annotations"
+    # config.DATA.PATH_TO_DATA_DIR = "/home/kanchanaranasinghe/data/kinetics400/k400-mini"
+    config.DATA.PATH_PREFIX = "/home/kanchanaranasinghe/data/kinetics400"
+    # dataset = Kinetics(cfg=config, mode="val", num_retries=10)
+    dataset = Kinetics(cfg=config, mode="train", num_retries=10, get_flow=True)
+    print(f"Loaded train dataset of length: {len(dataset)}")
+    dataloader = torch.utils.data.DataLoader(dataset=dataset, batch_size=4)
     for idx, i in enumerate(dataloader):
-        print([x.shape for x in i[0]], i[1:3])#, [x.shape for x in i[3]['flow']])
+        print([x.shape for x in i[0]], i[1:3], [x.shape for x in i[3]['flow']])
         break
 
     do_vis = False
@@ -377,7 +374,7 @@ if __name__ == '__main__':
         from PIL import Image
         from transform import undo_normalize
 
-        vis_path = "src/vis"
+        vis_path = "/home/kanchanaranasinghe/data/kinetics400/vis/spatial_aug"
 
         for aug_idx in range(len(i[0])):
             temp = i[0][aug_idx][3].permute(1, 2, 3, 0)

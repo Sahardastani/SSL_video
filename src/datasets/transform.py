@@ -716,7 +716,7 @@ class VideoDataAugmentationDINO(object):
         return frames
 
     # transformation for the local small crops
-    def local_transform(self, frames): 
+    def local_transform(self, frames):
         frames = random_resized_crop(frames, size=96, scale=self.local_crops_scale, interpolation="bicubic")
         frames = self.flip_and_color_jitter(frames)
         if np.random.uniform() < 0.5:

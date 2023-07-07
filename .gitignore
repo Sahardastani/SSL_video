@@ -2,7 +2,7 @@
 mlruns
 
 # Ignore any outputs
-*/outputs/
+outputs/
 data/
 checkpoints/
 jobs/
@@ -115,6 +115,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+/poetry.lock
 
 # Spyder project settings
 .spyderproject
@@ -131,3 +132,4 @@ venv.bak/
 
 # .pkl files
 *.pkl
+

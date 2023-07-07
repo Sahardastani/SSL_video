@@ -1,8 +1,9 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
 
 import math
-import numpy as np
 import random
+
+import numpy as np
 import torch
 import torchvision.io as io
 
@@ -59,7 +60,7 @@ def get_start_end_idx(video_size, clip_size, clip_idx, num_clips):
 
 
 def pyav_decode_stream(
-    container, start_pts, end_pts, stream, stream_name, buffer_size=0
+        container, start_pts, end_pts, stream, stream_name, buffer_size=0
 ):
     """
     Decode the video with PyAV decoder.
@@ -101,15 +102,15 @@ def pyav_decode_stream(
 
 
 def torchvision_decode(
-    video_handle,
-    sampling_rate,
-    num_frames,
-    clip_idx,
-    video_meta,
-    num_clips=10,
-    target_fps=30,
-    modalities=("visual",),
-    max_spatial_scale=0,
+        video_handle,
+        sampling_rate,
+        num_frames,
+        clip_idx,
+        video_meta,
+        num_clips=10,
+        target_fps=30,
+        modalities=("visual",),
+        max_spatial_scale=0,
 ):
     """
     If video_meta is not empty, perform temporal selective decoding to sample a
@@ -163,9 +164,9 @@ def torchvision_decode(
 
     fps = video_meta["video_fps"]
     if (
-        video_meta["has_video"]
-        and video_meta["video_denominator"] > 0
-        and video_meta["video_duration"] > 0
+            video_meta["has_video"]
+            and video_meta["video_denominator"] > 0
+            and video_meta["video_duration"] > 0
     ):
         # try selective decoding.
         decode_all_video = False
@@ -211,8 +212,9 @@ def torchvision_decode(
 
 
 def pyav_decode(
-    container, sampling_rate, num_frames, clip_idx, num_clips=10, target_fps=30, start=None, end=None
-, duration=None, frames_length=None):
+        container, sampling_rate, num_frames, clip_idx, num_clips=10, target_fps=30, start=None,
+        end=None
+        , duration=None, frames_length=None):
     """
     Convert the video from its original fps to the target_fps. If the video
     support selective decoding (contain decoding information in the video head),
@@ -248,7 +250,7 @@ def pyav_decode(
     frames_length = container.streams.video[0].frames
     duration = container.streams.video[0].duration
     if duration is None and orig_duration is not None:
-       duration = orig_duration / tb
+        duration = orig_duration / tb
 
     if duration is None:
         # If failed to fetch the decoding information, decode the entire video.
@@ -301,22 +303,22 @@ def pyav_decode(
 
 
 def decode(
-    container,
-    sampling_rate,
-    num_frames,
-    clip_idx=-1,
-    num_clips=10,
-    video_meta=None,
-    target_fps=30,
-    backend="pyav",
-    max_spatial_scale=0,
-    start=None,
-    end=None,
-    duration=None,
-    frames_length=None,
-    temporal_aug=False,
-    two_token=False,
-    rand_fr=False
+        container,
+        sampling_rate,
+        num_frames,
+        clip_idx=-1,
+        num_clips=10,
+        video_meta=None,
+        target_fps=30,
+        backend="pyav",
+        max_spatial_scale=0,
+        start=None,
+        end=None,
+        duration=None,
+        frames_length=None,
+        temporal_aug=False,
+        two_token=False,
+        rand_fr=False
 ):
     """
     Decode the video and perform temporal sampling.
@@ -419,7 +421,8 @@ def decode(
             num_local_frames = [2, 2, 4, 4, 8, 8, 16, 16]
             for l_idx in range(8):
                 random_idx = random.randint(0, max_len - local_width - 1)
-                cur_local = temporal_sampling(frames, random_idx, random_idx + local_width, num_local_frames[l_idx])
+                cur_local = temporal_sampling(frames, random_idx, random_idx + local_width,
+                                              num_local_frames[l_idx])
                 local_samples.append(cur_local)
         else:
             num_global_frames = num_frames
@@ -430,11 +433,13 @@ def decode(
             local_width = max_len // 8
             for _ in range(8):
                 random_idx = random.randint(0, max_len - local_width - 1)
-                cur_local = temporal_sampling(frames, random_idx, random_idx + local_width, num_local_frames)
+                cur_local = temporal_sampling(frames, random_idx, random_idx + local_width,
+                                              num_local_frames)
                 local_samples.append(cur_local)
 
         frames = [global_1, global_2, *local_samples]
 
     else:
-        frames = temporal_sampling(frames, start_idx, end_idx, num_frames)  # frames.shape = (T, H, W, C)
+        frames = temporal_sampling(frames, start_idx, end_idx,
+                                   num_frames)  # frames.shape = (T, H, W, C)
     return frames
