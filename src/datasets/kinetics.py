@@ -342,7 +342,7 @@ def test_dataset(cfg: DictConfig) -> None:
             temp = i[0][aug_idx][3].permute(1, 2, 3, 0)
             temp = undo_normalize(temp, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
             for idx in range(temp.shape[0]):
-                im = Image.fromarray(temp[idx].numpy()).resize((512, 512))
+                im = Image.fromarray(temp[idx].numpy()).resize((224, 224))
                 plt.imshow(im)
                 plt.show()
 
