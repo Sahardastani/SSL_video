@@ -1,20 +1,24 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
-import glob
 import os
 import random
 import warnings
-from PIL import Image
+
+import hydra
 import torch
 import torch.utils.data
-import torchvision
-import kornia
-
-from datasets.transform import resize
-from datasets.data_utils import get_random_sampling_rate, tensor_normalize, spatial_sampling, pack_pathway_output
-from datasets.decoder import decode
-from datasets.video_container import get_video_container
-from datasets.transform import VideoDataAugmentationDINO
+from PIL import Image
 from einops import rearrange
+from matplotlib import pyplot as plt
+from omegaconf import DictConfig
+
+from datasets.data_utils import get_random_sampling_rate, tensor_normalize, spatial_sampling, \
+    pack_pathway_output
+from datasets.decoder import decode
+from datasets.transform import VideoDataAugmentationDINO
+from datasets.video_container import get_video_container
+from src import configs_dir
+from transform import undo_normalize
+from utils.defaults import build_config
 
 
 class Kinetics(torch.utils.data.Dataset):
@@ -80,7 +84,7 @@ class Kinetics(torch.utils.data.Dataset):
         Construct the video loader.
         """
         path_to_file = os.path.join(
-            self.cfg.DATA.PATH_TO_DATA_DIR, "{}.csv".format(self.mode)
+            self.cfg.DATA.PATH_PREFIX, 'annotations', "{}.csv".format(self.mode)
         )
         assert os.path.exists(path_to_file), "{} dir not found".format(
             path_to_file
@@ -233,7 +237,6 @@ class Kinetics(torch.utils.data.Dataset):
                 backend=self.cfg.DATA.DECODING_BACKEND,
                 max_spatial_scale=min_scale,
                 temporal_aug=self.mode == "train" and not self.cfg.DATA.NO_RGB_AUG,
-                two_token=self.cfg.MODEL.TWO_TOKEN,
                 rand_fr=self.cfg.DATA.RAND_FR
             )
 
@@ -291,8 +294,7 @@ class Kinetics(torch.utils.data.Dataset):
 
                 # Perform data augmentation.
                 augmentation = VideoDataAugmentationDINO()
-                frames = augmentation(frames, from_list=True, no_aug=self.cfg.DATA.NO_SPATIAL,
-                                      two_token=self.cfg.MODEL.TWO_TOKEN)
+                frames = augmentation(frames, from_list=True, no_aug=self.cfg.DATA.NO_SPATIAL)
 
                 # T C H W -> C T H W.
                 frames = [rearrange(x, "t c h w -> c t h w") for x in frames]
@@ -302,28 +304,13 @@ class Kinetics(torch.utils.data.Dataset):
                     x,
                     1,
                     torch.linspace(
-                        0, x.shape[1] - 1, x.shape[1] if self.cfg.DATA.RAND_FR else self.cfg.DATA.NUM_FRAMES
+                        0, x.shape[1] - 1,
+                        x.shape[1] if self.cfg.DATA.RAND_FR else self.cfg.DATA.NUM_FRAMES
 
                     ).long(),
                 ) for x in frames]
 
             meta_data = {}
-            if self.get_flow:
-                assert self.mode == "train", "flow only for train"
-                try:
-                    flow_path = self._path_to_videos[index].replace("train_d256", "train_flow")[:-4]
-                    flow_tensor = self.get_flow_from_folder(flow_path)
-                    flow_tensor = kornia.filters.sobel(flow_tensor)
-                    if self.cfg.DATA.NO_FLOW_AUG:
-                        flow_tensor = resize(flow_tensor, size=self.cfg.DATA.CROP_SIZE, mode="bicubic")
-                        flow_tensor = [x for x in flow_tensor]
-                    else:
-                        flow_tensor = augmentation(flow_tensor)
-                        flow_tensor = [rearrange(x, "t c h w -> c t h w") for x in flow_tensor]
-                    meta_data["flow"] = flow_tensor
-                except Exception as e:
-                    print(e)
-                    continue
             return frames, label, index, meta_data
 
         else:
@@ -340,45 +327,27 @@ class Kinetics(torch.utils.data.Dataset):
         """
         return len(self._path_to_videos)
 
-    @staticmethod
-    def get_flow_from_folder(dir_path):
-        flow_image_list = sorted(glob.glob(f"{dir_path}/*.jpg"))
-        flow_image_list = [Image.open(im_path) for im_path in flow_image_list]
-        flow_image_list = [torchvision.transforms.functional.to_tensor(im_path) for im_path in flow_image_list]
-        return torch.stack(flow_image_list, dim=0)
 
-
-if __name__ == '__main__':
-
-    # import torch
-    # from timesformer.datasets import Kinetics
-    from utils.parser import parse_args, load_config
-    from tqdm import tqdm
-
-    args = parse_args()
-    args.cfg_file = "/home/kanchanaranasinghe/repo/timesformer/configs/Kinetics/TimeSformer_divST_8x32_224.yaml"
-    config = load_config(args)
-    config.DATA.PATH_TO_DATA_DIR = "/home/kanchanaranasinghe/data/kinetics400/new_annotations"
-    # config.DATA.PATH_TO_DATA_DIR = "/home/kanchanaranasinghe/data/kinetics400/k400-mini"
-    config.DATA.PATH_PREFIX = "/home/kanchanaranasinghe/data/kinetics400"
-    # dataset = Kinetics(cfg=config, mode="val", num_retries=10)
-    dataset = Kinetics(cfg=config, mode="train", num_retries=10, get_flow=True)
+@hydra.main(version_base=None, config_path=configs_dir(), config_name="config")
+def test_dataset(cfg: DictConfig) -> None:
+    """
+    Downloads the kinetics dataset to the root folder specified in configs/datasets/kinetics.
+    """
+    config = build_config(cfg)
+    dataset = Kinetics(cfg=config, mode="train", num_retries=10, get_flow=False)
     print(f"Loaded train dataset of length: {len(dataset)}")
     dataloader = torch.utils.data.DataLoader(dataset=dataset, batch_size=4)
     for idx, i in enumerate(dataloader):
-        print([x.shape for x in i[0]], i[1:3], [x.shape for x in i[3]['flow']])
-        break
-
-    do_vis = False
-    if do_vis:
-        from PIL import Image
-        from transform import undo_normalize
-
-        vis_path = "/home/kanchanaranasinghe/data/kinetics400/vis/spatial_aug"
-
         for aug_idx in range(len(i[0])):
             temp = i[0][aug_idx][3].permute(1, 2, 3, 0)
             temp = undo_normalize(temp, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
             for idx in range(temp.shape[0]):
-                im = Image.fromarray(temp[idx].numpy())
-                im.resize((224, 224)).save(f"{vis_path}/aug_{aug_idx}_fr_{idx:02d}.jpg")
+                im = Image.fromarray(temp[idx].numpy()).resize((512, 512))
+                plt.imshow(im)
+                plt.show()
+
+        plt.waitforbuttonpress(10)
+
+
+if __name__ == "__main__":
+    test_dataset()
