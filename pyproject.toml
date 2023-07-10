@@ -6,14 +6,21 @@ build-backend = "poetry.core.masonry.api"
 name= "ssl_video"
 version= "0.0.1"
 description = "SSL video project"
-authors = ["a"]
+authors = ["Ali Harake, Sonia Dastani"]
 packages = [{include = "src"}]
 
 [tool.poetry.dependencies]
-python = "^3.10.6"
-torch = "^2.0.0"
-torchvision = "^0.15.1"
+python = "^3.10"
+hydra-core = "^1.3.2"
+wandb = "^0.15.5"
+einops = "^0.6.1"
 av = "^10.0.0"
-opencv-python = "^4.7.0.72"
-matplotlib = "^3.7.1"
-wandb = "^0.15.0"
+tqdm = "^4.65.0"
+kornia = "^0.6.12"
+decord = "^0.6.0"
+opnecv-python = "^4.8.0.74"
+compress-pickle = "^2.1.0"
+pandas = "^2.0.3"
+scikit-image = "^0.21.0"
+joblib = "^1.3.1"
+matplotlib = "^3.7.2"

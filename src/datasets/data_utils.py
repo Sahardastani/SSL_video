@@ -11,7 +11,7 @@ import torch
 from fvcore.common.file_io import PathManager
 from torch.utils.data.distributed import DistributedSampler
 
-import transform as transform
+import datasets.transform as transform
 
 logger = logging.getLogger(__name__)
 

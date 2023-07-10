@@ -1,0 +1,17 @@
+name: kinetics
+
+# DataConfig configs
+# This naming convention is to follow SVT data reader configs
+PATH_PREFIX: ~/datasets/kinetics-dataset/k400
+
+NUM_FRAMES: 8
+SAMPLING_RATE: 32
+TRAIN_JITTER_SCALES: [256, 320]
+TRAIN_CROP_SIZE: 224
+TEST_CROP_SIZE: 224
+INPUT_CHANNEL_NUM: [3]
+PATH_LABEL_SEPARATOR: " "
+
+# Dataloader configs
+NUM_WORKERS: 12
+PIN_MEMORY: True

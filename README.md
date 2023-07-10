@@ -19,7 +19,7 @@
 ### Prerequisite
 * Replace `DATA.PATH_TO_DATA_DIR` in [TimeSformer_divST_8x32_224.yaml](src/configs/TimeSformer_divST_8x32_224.yaml) with your data directory.
 
-* Append your current project direcotry in [downscale.py](src/datasets/preprocessing/downscale.py), [prepare_csv.py](src/datasets/preprocessing/prepare_csv.py), and [kinetics.py](src/datasets/kinetics.py) using `sys.path.append('current/project/directory')`. Replace it with your directory.
+* Append your current project direcotry in [downscale.py](src/datasets/preprocessing/downscale.py), [prepare_csv.py](src/datasets/preprocessing/prepare_csv.py), and [kinetics.py](src/datasets/kinetics_download.py) using `sys.path.append('current/project/directory')`. Replace it with your directory.
 
 ### Resize Videos
 
