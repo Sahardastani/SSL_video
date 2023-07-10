@@ -347,7 +347,7 @@ def test_dataset(cfg: DictConfig) -> None:
                 plt.show()
 
         plt.waitforbuttonpress(10)
-
+        # Shows 10 clips from the same video.
 
 if __name__ == "__main__":
     test_dataset()

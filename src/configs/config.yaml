@@ -1,6 +1,8 @@
 defaults:
   - _self_
   - dataset: kinetics
+  - feature_extractor: resnet2d1
+  - model: vicregl
 
 split: 'train'
 

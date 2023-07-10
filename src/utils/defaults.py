@@ -117,10 +117,10 @@ class TestConfig:
 @dataclass
 class ModelConfig:
     # Model architecture.
-    ARCH: str = "slowfast"
+    ARCH: str = "resnet2d1"
 
     # Model name
-    MODEL_NAME: str = "SlowFast"
+    MODEL_NAME: str = "ResNetVicReg"
 
     # The number of classes to predict for the model.
     NUM_CLASSES: int = 400

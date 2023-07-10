@@ -4,14 +4,14 @@ import hydra
 import pandas as pd
 from omegaconf import DictConfig
 
-from datasets.kinetics import build_dataset_config
+from datasets.kinetics import build_config
 from src import configs_dir
 
 
 @hydra.main(version_base=None, config_path=configs_dir(),
             config_name="prepare_csv")
 def parse_csvs(cfg: DictConfig) -> None:
-    config = build_dataset_config(cfg)
+    config = build_config(cfg)
     split = ['train', 'val', 'test']
 
     for item in split:
