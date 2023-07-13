@@ -11,14 +11,14 @@ from einops import rearrange
 from matplotlib import pyplot as plt
 from omegaconf import DictConfig
 
-from datasets.data_utils import get_random_sampling_rate, tensor_normalize, spatial_sampling, \
+from src.datasets.data_utils import get_random_sampling_rate, tensor_normalize, spatial_sampling, \
     pack_pathway_output
-from datasets.decoder import decode
-from datasets.transform import VideoDataAugmentationDINO
-from datasets.video_container import get_video_container
+from src.datasets.decoder import decode
+from src.datasets.transform import VideoDataAugmentationDINO
+from src.datasets.video_container import get_video_container
 from src import configs_dir
-from transform import undo_normalize
-from utils.defaults import build_config
+from src.datasets.transform import undo_normalize
+from src.utils.defaults import build_config
 
 
 class Kinetics(torch.utils.data.Dataset):
@@ -274,7 +274,6 @@ class Kinetics(torch.utils.data.Dataset):
                     random_horizontal_flip=self.cfg.DATA.RANDOM_FLIP,
                     inverse_uniform_sampling=self.cfg.DATA.INV_UNIFORM_SAMPLE,
                 )
-
                 if not self.cfg.MODEL.ARCH in ['vit']:
                     frames = pack_pathway_output(self.cfg, frames)
                 else:
@@ -326,28 +325,9 @@ class Kinetics(torch.utils.data.Dataset):
             (int): the number of videos in the dataset.
         """
         return len(self._path_to_videos)
-
-
-@hydra.main(version_base=None, config_path=configs_dir(), config_name="config")
-def test_dataset(cfg: DictConfig) -> None:
-    """
-    Downloads the kinetics dataset to the root folder specified in configs/datasets/kinetics.
-    """
-    config = build_config(cfg)
-    dataset = Kinetics(cfg=config, mode="train", num_retries=10, get_flow=False)
-    print(f"Loaded train dataset of length: {len(dataset)}")
-    dataloader = torch.utils.data.DataLoader(dataset=dataset, batch_size=4)
-    for idx, i in enumerate(dataloader):
-        for aug_idx in range(len(i[0])):
-            temp = i[0][aug_idx][3].permute(1, 2, 3, 0)
-            temp = undo_normalize(temp, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-            for idx in range(temp.shape[0]):
-                im = Image.fromarray(temp[idx].numpy()).resize((224, 224))
-                plt.imshow(im)
-                plt.show()
-
-        plt.waitforbuttonpress(10)
-        # Shows 10 clips from the same video.
-
-if __name__ == "__main__":
-    test_dataset()
+    
+def make_inputs(inputs, gpu):
+    
+    inputs = [clip.cuda(gpu, non_blocking=True) for clip in inputs]
+    
+    return inputs

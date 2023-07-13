@@ -4,7 +4,7 @@ import hydra
 import pandas as pd
 from omegaconf import DictConfig
 
-from datasets.kinetics import build_config
+from src.datasets.kinetics import build_config
 from src import configs_dir
 
 

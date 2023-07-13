@@ -5,7 +5,7 @@ mlruns
 outputs/
 data/
 checkpoints/
-jobs/
+experiments/
 k400/
 
 */*/__pycache__
