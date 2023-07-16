@@ -24,7 +24,7 @@ def round_log(key, log, item=True, iters=1):
 
 def checkpoint(args, epoch, step, model, optimizer, name=""):
     if args.rank != 0 or epoch % args.MODEL.CHECKPOINT_FREQ != 0:
-        return 
+        return
     state = dict(
         epoch=epoch, model=model.state_dict(), optimizer=optimizer.state_dict()
     )

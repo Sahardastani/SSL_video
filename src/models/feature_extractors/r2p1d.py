@@ -1,6 +1,5 @@
 import math
 
-import torch
 import torch.nn as nn
 from torch.nn.modules.utils import _triple
 
@@ -32,23 +31,24 @@ class SpatioTemporalConv(nn.Module):
         # masking out the values with the defaults on the axis that
         # won't be convolved over. This is necessary to avoid unintentional
         # behavior such as padding being added twice
-        spatial_kernel_size =  [1, kernel_size[1], kernel_size[2]]
-        spatial_stride =  [1, stride[1], stride[2]]
-        spatial_padding =  [0, padding[1], padding[2]]
+        spatial_kernel_size = [1, kernel_size[1], kernel_size[2]]
+        spatial_stride = [1, stride[1], stride[2]]
+        spatial_padding = [0, padding[1], padding[2]]
 
         temporal_kernel_size = [kernel_size[0], 1, 1]
-        temporal_stride =  [stride[0], 1, 1]
-        temporal_padding =  [padding[0], 0, 0]
+        temporal_stride = [stride[0], 1, 1]
+        temporal_padding = [padding[0], 0, 0]
 
         # compute the number of intermediary channels (M) using formula 
         # from the paper section 3.5
-        intermed_channels = int(math.floor((kernel_size[0] * kernel_size[1] * kernel_size[2] * in_channels * out_channels)/ \
-                            (kernel_size[1]* kernel_size[2] * in_channels + kernel_size[0] * out_channels)))
+        intermed_channels = int(math.floor(
+            (kernel_size[0] * kernel_size[1] * kernel_size[2] * in_channels * out_channels) / \
+            (kernel_size[1] * kernel_size[2] * in_channels + kernel_size[0] * out_channels)))
 
         # the spatial conv is effectively a 2D conv due to the 
         # spatial_kernel_size, followed by batch_norm and ReLU
         self.spatial_conv = nn.Conv3d(in_channels, intermed_channels, spatial_kernel_size,
-                                    stride=spatial_stride, padding=spatial_padding, bias=bias)
+                                      stride=spatial_stride, padding=spatial_padding, bias=bias)
         self.bn = nn.BatchNorm3d(intermed_channels)
         self.relu = nn.ReLU()
 
@@ -57,13 +57,14 @@ class SpatioTemporalConv(nn.Module):
         # intentional design choice, to allow this module to externally act 
         # identical to a standard Conv3D, so it can be reused easily in any 
         # other codebase
-        self.temporal_conv = nn.Conv3d(intermed_channels, out_channels, temporal_kernel_size, 
-                                    stride=temporal_stride, padding=temporal_padding, bias=bias)
+        self.temporal_conv = nn.Conv3d(intermed_channels, out_channels, temporal_kernel_size,
+                                       stride=temporal_stride, padding=temporal_padding, bias=bias)
 
     def forward(self, x):
         x = self.relu(self.bn(self.spatial_conv(x)))
         x = self.temporal_conv(x)
         return x
+
 
 class SpatioTemporalResBlock(nn.Module):
     r"""Single block for the ResNet network. Uses SpatioTemporalConv in 
@@ -75,18 +76,19 @@ class SpatioTemporalResBlock(nn.Module):
             kernel_size (int or tuple): Size of the convolving kernels.
             downsample (bool, optional): If ``True``, the output size is to be smaller than the input. Default: ``False``
         """
+
     def __init__(self, in_channels, out_channels, kernel_size, downsample=False):
         super(SpatioTemporalResBlock, self).__init__()
-        
+
         # If downsample == True, the first conv of the layer has stride = 2 
         # to halve the residual output size, and the input x is passed 
         # through a seperate 1x1x1 conv with stride = 2 to also halve it.
 
         # no pooling layers are used inside ResNet
         self.downsample = downsample
-        
+
         # to allow for SAME padding
-        padding = kernel_size//2
+        padding = kernel_size // 2
 
         if self.downsample:
             # downsample with stride =2 the input x
@@ -94,7 +96,8 @@ class SpatioTemporalResBlock(nn.Module):
             self.downsamplebn = nn.BatchNorm3d(out_channels)
 
             # downsample with stride = 2when producing the residual
-            self.conv1 = SpatioTemporalConv(in_channels, out_channels, kernel_size, padding=padding, stride=2)
+            self.conv1 = SpatioTemporalConv(in_channels, out_channels, kernel_size, padding=padding,
+                                            stride=2)
         else:
             self.conv1 = SpatioTemporalConv(in_channels, out_channels, kernel_size, padding=padding)
 
@@ -107,13 +110,14 @@ class SpatioTemporalResBlock(nn.Module):
         self.outrelu = nn.ReLU()
 
     def forward(self, x):
-        res = self.relu1(self.bn1(self.conv1(x)))    
+        res = self.relu1(self.bn1(self.conv1(x)))
         res = self.bn2(self.conv2(res))
 
         if self.downsample:
             x = self.downsamplebn(self.downsampleconv(x))
 
         return self.outrelu(x + res)
+
 
 class SpatioTemporalResLayer(nn.Module):
     r"""Forms a single layer of the ResNet network, with a number of repeating 
@@ -128,8 +132,9 @@ class SpatioTemporalResLayer(nn.Module):
             downsample (bool, optional): If ``True``, the first block in layer will implement downsampling. Default: ``False``
         """
 
-    def __init__(self, in_channels, out_channels, kernel_size, layer_size, block_type=SpatioTemporalResBlock, downsample=False):
-        
+    def __init__(self, in_channels, out_channels, kernel_size, layer_size,
+                 block_type=SpatioTemporalResBlock, downsample=False):
+
         super(SpatioTemporalResLayer, self).__init__()
 
         # implement the first block
@@ -148,6 +153,7 @@ class SpatioTemporalResLayer(nn.Module):
 
         return x
 
+
 class R2Plus1DNet(nn.Module):
     r"""Forms the overall ResNet feature extractor by initializng 5 layers, with the number of blocks in 
     each layer set by layer_sizes, and by performing a global average pool at the end producing a 
@@ -157,6 +163,7 @@ class R2Plus1DNet(nn.Module):
             layer_sizes (tuple): An iterable containing the number of blocks in each layer
             block_type (Module, optional): Type of block that is to be used to form the layers. Default: SpatioTemporalResBlock. 
         """
+
     def __init__(self, layer_sizes, block_type=SpatioTemporalResBlock):
         super(R2Plus1DNet, self).__init__()
 
@@ -166,31 +173,34 @@ class R2Plus1DNet(nn.Module):
         self.conv2 = SpatioTemporalResLayer(64, 64, 3, layer_sizes[0], block_type=block_type)
         # each of the final three layers doubles num_channels, while performing downsampling 
         # inside the first block
-        self.conv3 = SpatioTemporalResLayer(64, 128, 3, layer_sizes[1], block_type=block_type, downsample=True)
-        self.conv4 = SpatioTemporalResLayer(128, 256, 3, layer_sizes[2], block_type=block_type, downsample=True)
-        self.conv5 = SpatioTemporalResLayer(256, 512, 3, layer_sizes[3], block_type=block_type, downsample=True)
+        self.conv3 = SpatioTemporalResLayer(64, 128, 3, layer_sizes[1], block_type=block_type,
+                                            downsample=True)
+        self.conv4 = SpatioTemporalResLayer(128, 256, 3, layer_sizes[2], block_type=block_type,
+                                            downsample=True)
+        self.conv5 = SpatioTemporalResLayer(256, 512, 3, layer_sizes[3], block_type=block_type,
+                                            downsample=True)
 
         # global average pooling of the output
         self.pool = nn.AdaptiveAvgPool3d(1)
-    
-    def forward(self, x):
 
+    def forward(self, x):
         x = self.conv1(x)
-        x1 = x              # torch.Size([5, 64, 8, 112, 112])
+        x1 = x  # torch.Size([5, 64, 8, 112, 112])
         x = self.conv2(x)
-        x2 = x              # torch.Size([5, 64, 8, 112, 112])
+        x2 = x  # torch.Size([5, 64, 8, 112, 112])
         x = self.conv3(x)
-        x3 = x              # torch.Size([5, 128, 4, 56, 56])
+        x3 = x  # torch.Size([5, 128, 4, 56, 56])
         x = self.conv4(x)
-        x4 = x              # torch.Size([5, 256, 2, 28, 28])
+        x4 = x  # torch.Size([5, 256, 2, 28, 28])
         x = self.conv5(x)
-        x5 = x              # torch.Size([5, 512, 1, 14, 14])
+        x5 = x  # torch.Size([5, 512, 1, 14, 14])
 
         x = self.pool(x)
-        x_pool = x          # torch.Size([5, 512, 1, 1, 1])
+        x_pool = x  # torch.Size([5, 512, 1, 1, 1])
 
         return x.view(-1, 512), [x1, x2, x3, x4, x5, x_pool]
-                            # torch.Size([5, 512])
+        # torch.Size([5, 512])
+
 
 class R2Plus1DClassifier(nn.Module):
     r"""Forms a complete ResNet classifier producing vectors of size num_classes, by initializng 5 layers, 
@@ -203,6 +213,7 @@ class R2Plus1DClassifier(nn.Module):
             layer_sizes (tuple): An iterable containing the number of blocks in each layer
             block_type (Module, optional): Type of block that is to be used to form the layers. Default: SpatioTemporalResBlock. 
         """
+
     def __init__(self, num_classes, layer_sizes, block_type=SpatioTemporalResBlock):
         super(R2Plus1DClassifier, self).__init__()
 
@@ -211,12 +222,6 @@ class R2Plus1DClassifier(nn.Module):
 
     def forward(self, x):
         x = self.res2plus1d(x)
-        x = self.linear(x) 
+        x = self.linear(x)
 
-        return x   
-
-if __name__ == '__main__':
-    model = R2Plus1DNet(layer_sizes = [1, 1, 1, 1])
-
-    x = torch.randn((5, 3, 8, 224, 224))
-    out = model(x)
+        return x

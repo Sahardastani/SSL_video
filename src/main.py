@@ -1,7 +1,7 @@
 import os
 import hydra
-import time 
-import json 
+import time
+import json
 
 import torch
 from torch import nn
@@ -14,11 +14,10 @@ from src.datasets.kinetics import Kinetics, make_inputs
 from src.models.vicregl import VICRegL
 from src.optimizers.optimizers import build_optimizer
 from src.utils.distributed import init_distributed_mode
-from src.models import utils 
+from src.utils import model_utils
 
 @hydra.main(version_base=None, config_path=configs_dir(), config_name="config")
 def test_dataset(cfg: DictConfig) -> None:
-    
     config = build_config(cfg)
     torch.backends.cudnn.benchmark = True
     init_distributed_mode(config)
@@ -39,7 +38,7 @@ def test_dataset(cfg: DictConfig) -> None:
 
     for epoch in range(start_epoch, config.MODEL.EPOCHS):
         for step, inputs in enumerate(train_loader, start=epoch * len(train_loader)):
-            lr = utils.learning_schedule(
+            lr = model_utils.learning_schedule(
                 global_step=step,
                 batch_size=config.TEST.BATCH_SIZE,
                 base_lr=config.TEST.BASE_LR,
@@ -60,7 +59,7 @@ def test_dataset(cfg: DictConfig) -> None:
             loss.backward()
             optimizer.step()
 
-        utils.checkpoint(config, epoch + 1, step, model, optimizer)
+        model_utils.checkpoint(config, epoch + 1, step, model, optimizer)
 
 if __name__ == "__main__":
     test_dataset()

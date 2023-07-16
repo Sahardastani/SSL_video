@@ -1,7 +1,7 @@
-from torch import nn
-import torch.nn.functional as F
-import torch
 import numpy as np
+import torch
+from torch import nn
+
 
 class Flatten(nn.Module):
     def __init__(self):
@@ -17,7 +17,7 @@ class Normalize(nn.Module):
         self.power = power
 
     def forward(self, x):
-        norm = x.pow(self.power).sum(1, keepdim=True).pow(1./self.power)
+        norm = x.pow(self.power).sum(1, keepdim=True).pow(1. / self.power)
         out = x.div(norm)
         return out
 
@@ -31,6 +31,7 @@ class Sharpen(nn.Module):
         tempered = torch.pow(probabilities, 1 / self.T)
         tempered = tempered / tempered.sum(dim=-1, keepdim=True)
         return tempered
+
 
 class MotionEnhance(nn.Module):
     def __init__(self, beta=1, maxium_radio=0.3):
@@ -51,6 +52,7 @@ class TCN(nn.Module):
     encode a video clip into 128 dimension features and classify
     two implement ways, reshape and encode adjcent samples into batch dimension
     """
+
     def __init__(self, base_model, out_size, args):
         super(TCN, self).__init__()
         self.base_model = base_model

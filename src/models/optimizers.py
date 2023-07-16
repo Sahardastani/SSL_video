@@ -16,14 +16,14 @@ def exclude_bias_and_norm(p):
 
 class LARS(optim.Optimizer):
     def __init__(
-        self,
-        params,
-        lr,
-        weight_decay=0,
-        momentum=0.9,
-        eta=0.001,
-        weight_decay_filter=None,
-        lars_adaptation_filter=None,
+            self,
+            params,
+            lr,
+            weight_decay=0,
+            momentum=0.9,
+            eta=0.001,
+            weight_decay_filter=None,
+            lars_adaptation_filter=None,
     ):
         defaults = dict(
             lr=lr,

@@ -11,7 +11,7 @@ from einops import rearrange
 from matplotlib import pyplot as plt
 from omegaconf import DictConfig
 
-from src.datasets.data_utils import get_random_sampling_rate, tensor_normalize, spatial_sampling, \
+from src.utils.data_utils import get_random_sampling_rate, tensor_normalize, spatial_sampling, \
     pack_pathway_output
 from src.datasets.decoder import decode
 from src.datasets.transform import VideoDataAugmentationDINO
