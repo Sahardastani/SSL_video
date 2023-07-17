@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import os
 import hydra
 import time 
@@ -74,5 +73,3 @@ def run_pretraining(cfg: DictConfig) -> None:
 
 if __name__ == "__main__":
     run_pretraining()
-=======
->>>>>>> 9f89e256d6a58be108fea5e36b6c8da9220aece4

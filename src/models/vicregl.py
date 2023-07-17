@@ -4,22 +4,14 @@
 
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
-import sys
-sys.path.append('/home/sdastani/projects/rrg-ebrahimi/sdastani/SSL_video/src')
 
 import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import nn
 
-<<<<<<< HEAD
-from src.utils import utils
-from src.models.r2p1d import R2Plus1DNet
-=======
 from src.models.feature_extractors.r2p1d import R2Plus1DNet
 from src.utils import model_utils
-
->>>>>>> 9f89e256d6a58be108fea5e36b6c8da9220aece4
 
 class VICRegL(nn.Module):
     def __init__(self, cfg):
