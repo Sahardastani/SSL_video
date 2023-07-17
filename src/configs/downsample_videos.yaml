@@ -1,4 +1,4 @@
-src_dir: ~/datasets/kinetics-dataset/k400 # This is the directory of the videos we resize
+src_dir: /home/sdastani/projects/rrg-ebrahimi/sdastani/SSL_video/k400 # This is the directory of the videos we resize
 split: 'train'
 num_workers: 24
 

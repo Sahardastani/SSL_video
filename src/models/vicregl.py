@@ -4,6 +4,8 @@
 
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
+import sys
+sys.path.append('/home/sdastani/projects/rrg-ebrahimi/sdastani/SSL_video/src')
 
 from pathlib import Path
 import argparse
@@ -18,7 +20,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from src.models import utils
+from src.utils import utils
 from src.models.r2p1d import R2Plus1DNet
 
 class VICRegL(nn.Module):

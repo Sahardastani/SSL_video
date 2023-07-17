@@ -119,12 +119,11 @@ class TestConfig:
 
     END_LR_RATIO: float = 0.001
 
-
 @dataclass
 class ModelConfig:
 
     # experiments directory
-    EXP_DIR: str = "~/SSL_video/experiments"
+    EXP_DIR: str = "/home/sdastani/projects/rrg-ebrahimi/sdastani/SSL_video/experiments"
 
     # Model architecture that has one single pathway
     SINGLE_PATHWAY_ARCH: list = field(default_factory=lambda: ["c2d", "i3d", "slow", "x3d", "resnet2d1"])
@@ -194,6 +193,7 @@ class DistributedConfig:
     # The number of distributed processes
     WORLD_SIZE: int = 1
 
+
     LOCAL_RANK: int = -1
 
     # url used to set up distributed training
@@ -228,11 +228,25 @@ def build_config(cfg: DictConfig) -> None:
                       PATH_LABEL_SEPARATOR=cfg['dataset']['PATH_LABEL_SEPARATOR'])
     DATA_LOADER = DataLoader(PIN_MEMORY=cfg['dataset']['PIN_MEMORY'],
                              NUM_WORKERS=cfg['dataset']['NUM_WORKERS'])
+    TEST = TestConfig(BATCH_SIZE=cfg['model']['BATCH_SIZE'])
+    MODEL = ModelConfig(EXP_DIR=cfg['model']['EXP_DIR'],
+                        ARCH=cfg['feature_extractor']['ARCH'],
+                        EPOCHS=cfg['feature_extractor']['EPOCHS'],
+                        OPTIMIZER=cfg['feature_extractor']['OPTIMIZER'],
+                        MLP=cfg['feature_extractor']['MLP'],
+                        MAPS_MLP=cfg['feature_extractor']['MAPS_MLP'],
+                        LAYER_SIZES=cfg['feature_extractor']['LAYER_SIZES'],
+                        INV_COEFF=cfg['model']['INV_COEFF'],
+                        VAR_COEFF=cfg['model']['VAR_COEFF'],
+                        COV_COEFF=cfg['model']['COV_COEFF'])
+    DISTRIBUTE = DistributedConfig(WORLD_SIZE=cfg['model']['WORLD_SIZE'],
+                                   LOCAL_RANK=cfg['model']['LOCAL_RANK'],
+                                   DIST_URL=cfg['model']['DIST_URL'])
 
     config = Config(DATA=DATA,
                     MULTIGRID=MultiGrid(),
                     DATA_LOADER=DATA_LOADER,
-                    TEST=TestConfig(),
-                    MODEL=ModelConfig(),
-                    DISTRIBUTE=DistributedConfig())
+                    TEST=TEST,
+                    MODEL=MODEL,
+                    DISTRIBUTE=DISTRIBUTE)
     return config

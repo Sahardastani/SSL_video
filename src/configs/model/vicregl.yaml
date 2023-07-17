@@ -1,3 +1,15 @@
 name: vicregl
 
-EXP_DIR: "/home/sdastani/projects/rrg-ebrahimi/sdastani/SSL_video/experiments"
+# Test config
+BATCH_SIZE: 5
+
+# Model config
+EXP_DIR: "experiments"
+INV_COEFF: 25.0
+VAR_COEFF: 25.0
+COV_COEFF: 1.0
+
+# Distributed config
+WORLD_SIZE: 1
+LOCAL_RANK: -1
+DIST_URL: "env://"

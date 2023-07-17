@@ -3,6 +3,7 @@ defaults:
   - dataset: kinetics
   - feature_extractor: resnet2d1
   - model: vicregl
+  # - experiments: "/home/sdastani/projects/rrg-ebrahimi/sdastani/SSL_video/experiments"
 
 split: 'train'
 

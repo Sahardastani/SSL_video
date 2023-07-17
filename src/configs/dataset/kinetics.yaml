@@ -2,7 +2,7 @@ name: kinetics
 
 # DataConfig configs
 # This naming convention is to follow SVT data reader configs
-PATH_PREFIX: ~/datasets/kinetics-dataset/k400
+PATH_PREFIX: /home/sdastani/projects/rrg-ebrahimi/sdastani/SSL_video/k400
 
 NUM_FRAMES: 8
 SAMPLING_RATE: 32
