@@ -7,21 +7,19 @@
 import sys
 sys.path.append('/home/sdastani/projects/rrg-ebrahimi/sdastani/SSL_video/src')
 
-from pathlib import Path
-import argparse
-import json
-import os
-import time
-import yaml
-
 import numpy as np
-
 import torch
 import torch.nn.functional as F
 from torch import nn
 
+<<<<<<< HEAD
 from src.utils import utils
 from src.models.r2p1d import R2Plus1DNet
+=======
+from src.models.feature_extractors.r2p1d import R2Plus1DNet
+from src.utils import model_utils
+
+>>>>>>> 9f89e256d6a58be108fea5e36b6c8da9220aece4
 
 class VICRegL(nn.Module):
     def __init__(self, cfg):
@@ -30,30 +28,30 @@ class VICRegL(nn.Module):
         self.embedding_dim = int(cfg.MODEL.MLP.split("-")[-1])
 
         if "resnet" in cfg.MODEL.ARCH:
-        
             self.backbone, self.representation_dim = R2Plus1DNet(cfg.MODEL.LAYER_SIZES), 512
             norm_layer = "batch_norm"
         else:
             raise Exception(f"Unsupported backbone {cfg.MODEL.ARCH}.")
 
         if self.cfg.MODEL.ALPHA < 1.0:
-            self.maps_projector = utils.MLP(cfg.MODEL.MAPS_MLP, self.representation_dim, norm_layer)
+            self.maps_projector = model_utils.MLP(cfg.MODEL.MAPS_MLP, self.representation_dim,
+                                                  norm_layer)
 
         if self.cfg.MODEL.ALPHA > 0.0:
-            self.projector = utils.MLP(cfg.MODEL.MLP, self.representation_dim, norm_layer)
+            self.projector = model_utils.MLP(cfg.MODEL.MLP, self.representation_dim, norm_layer)
 
         self.classifier = nn.Linear(self.representation_dim, self.cfg.MODEL.NUM_CLASSES)
 
     def _vicreg_loss(self, x, y):
         repr_loss = self.cfg.MODEL.INV_COEFF * F.mse_loss(x, y)
 
-        x = utils.gather_center(x)
-        y = utils.gather_center(y)
+        x = model_utils.gather_center(x)
+        y = model_utils.gather_center(y)
 
         std_x = torch.sqrt(x.var(dim=0) + 0.0001)
         std_y = torch.sqrt(y.var(dim=0) + 0.0001)
         std_loss = self.cfg.MODEL.VAR_COEFF * (
-            torch.mean(F.relu(1.0 - std_x)) / 2 + torch.mean(F.relu(1.0 - std_y)) / 2
+                torch.mean(F.relu(1.0 - std_x)) / 2 + torch.mean(F.relu(1.0 - std_y)) / 2
         )
 
         x = x.permute((1, 0, 2))
@@ -69,7 +67,7 @@ class VICRegL(nn.Module):
         cov_x = torch.einsum("...nc,...nd->...cd", x, x) / (sample_size - 1)
         cov_y = torch.einsum("...nc,...nd->...cd", y, y) / (sample_size - 1)
         cov_loss = (cov_x[..., non_diag_mask].pow(2).sum(-1) / num_channels) / 2 + (
-            cov_y[..., non_diag_mask].pow(2).sum(-1) / num_channels
+                cov_y[..., non_diag_mask].pow(2).sum(-1) / num_channels
         ) / 2
         cov_loss = cov_loss.mean()
         cov_loss = self.cfg.MODEL.COV_COEFF * cov_loss
@@ -77,7 +75,7 @@ class VICRegL(nn.Module):
         return repr_loss, std_loss, cov_loss
 
     def _local_loss(
-        self, maps_1, maps_2, location_1, location_2
+            self, maps_1, maps_2, location_1, location_2
     ):
         inv_loss = 0.0
         var_loss = 0.0
@@ -161,7 +159,7 @@ class VICRegL(nn.Module):
             cov_loss = 0.0
             iter_ = 0
             for i in range(num_views):
-                x = utils.gather_center(maps_embedding[i])
+                x = model_utils.gather_center(maps_embedding[i])
                 std_x = torch.sqrt(x.var(dim=0) + 0.0001)
                 var_loss = var_loss + torch.mean(torch.relu(1.0 - std_x))
                 x = x.permute(1, 0, 2)
@@ -195,11 +193,11 @@ class VICRegL(nn.Module):
         cov_loss = 0.0
         iter_ = 0
         for i in range(num_views):
-            x = utils.gather_center(embedding[i])
+            x = model_utils.gather_center(embedding[i])
             std_x = torch.sqrt(x.var(dim=0) + 0.0001)
             var_loss = var_loss + torch.mean(torch.relu(1.0 - std_x))
             cov_x = (x.T @ x) / (x.size(0) - 1)
-            cov_loss = cov_loss + utils.off_diagonal(cov_x).pow_(2).sum().div(
+            cov_loss = cov_loss + model_utils.off_diagonal(cov_x).pow_(2).sum().div(
                 self.embedding_dim
             )
             iter_ = iter_ + 1
@@ -212,19 +210,19 @@ class VICRegL(nn.Module):
         def correlation_metric(x):
             x_centered = (x - x.mean(dim=0)) / (x.std(dim=0) + 1e-05)
             return torch.mean(
-                utils.off_diagonal((x_centered.T @ x_centered) / (x.size(0) - 1))
+                model_utils.off_diagonal((x_centered.T @ x_centered) / (x.size(0) - 1))
             )
 
         def std_metric(x):
             x = F.normalize(x, p=2, dim=1)
             return torch.mean(x.std(dim=0))
 
-        representation = utils.batch_all_gather(outputs["representation"][0])
+        representation = model_utils.batch_all_gather(outputs["representation"][0])
         corr = correlation_metric(representation)
         stdrepr = std_metric(representation)
 
         if self.cfg.MODEL.ALPHA > 0.0:
-            embedding = utils.batch_all_gather(outputs["embedding"][0])
+            embedding = model_utils.batch_all_gather(outputs["embedding"][0])
             core = correlation_metric(embedding)
             stdemb = std_metric(embedding)
             return dict(stdr=stdrepr, stde=stdemb, corr=corr, core=core)
@@ -279,7 +277,7 @@ class VICRegL(nn.Module):
                 outputs["embedding"]
             )
             loss = loss + self.cfg.MODEL.ALPHA * (inv_loss + var_loss + cov_loss)
-            logs.update(dict(inv_l=inv_loss, var_l=var_loss, cov_l=cov_loss,))
+            logs.update(dict(inv_l=inv_loss, var_l=var_loss, cov_l=cov_loss, ))
         # Local criterion
         # Maps shape: B, C, H, W
         # With convnext actual maps shape is: B, H * W, C
@@ -302,12 +300,12 @@ class VICRegL(nn.Module):
 
         # labels = inputs["labels"]
         # classif_loss = F.cross_entropy(outputs["logits"][0], labels)
-        # acc1, acc5 = utils.accuracy(outputs["logits"][0], labels, topk=(1, 5))
+        # acc1, acc5 = model_utils.accuracy(outputs["logits"][0], labels, topk=(1, 5))
         # loss = loss + classif_loss
         # logs.update(dict(cls_l=classif_loss, top1=acc1, top5=acc5, l=loss))
         # if is_val:
         #     classif_loss_val = F.cross_entropy(outputs["logits_val"][0], labels)
-        #     acc1_val, acc5_val = utils.accuracy(
+        #     acc1_val, acc5_val = model_utils.accuracy(
         #         outputs["logits_val"][0], labels, topk=(1, 5)
         #     )
         #     logs.update(
@@ -377,7 +375,7 @@ def neirest_neighbores_on_l2(input_maps, candidate_maps, num_matches):
 
 
 def neirest_neighbores_on_location(
-    input_location, candidate_location, input_maps, candidate_maps, num_matches
+        input_location, candidate_location, input_maps, candidate_maps, num_matches
 ):
     """
     input_location: (B, H * W, 2)
