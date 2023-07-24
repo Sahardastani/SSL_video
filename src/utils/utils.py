@@ -8,10 +8,19 @@
 
 import os
 import math
+import random 
+import numpy as np
 
 import torch
 import torch.distributed as dist
 import torch.nn as nn
+
+
+def set_seed(seed):
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    random.seed(seed)
 
 
 def round_log(key, log, item=True, iters=1):

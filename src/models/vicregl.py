@@ -4,6 +4,8 @@
 
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
+import sys
+sys.path.append('/home/sdastani/projects/rrg-ebrahimi/sdastani/SSL_video/src')
 
 import numpy as np
 import torch
@@ -198,7 +200,7 @@ class VICRegL(nn.Module):
 
         return inv_loss, var_loss, cov_loss
 
-    def compute_metrics(self, outputs):
+    def compute_metrics(self, outputs, is_val= False):
         def correlation_metric(x):
             x_centered = (x - x.mean(dim=0)) / (x.std(dim=0) + 1e-05)
             return torch.mean(
@@ -217,7 +219,10 @@ class VICRegL(nn.Module):
             embedding = model_utils.batch_all_gather(outputs["embedding"][0])
             core = correlation_metric(embedding)
             stdemb = std_metric(embedding)
-            return dict(stdr=stdrepr, stde=stdemb, corr=corr, core=core)
+            if is_val:
+                return dict(eval_stdr=stdrepr, eval_stde=stdemb, eval_corr=corr, eval_core=core)
+            else:
+                return dict(train_stdr=stdrepr, train_stde=stdemb, train_corr=corr, train_core=core)
 
         return dict(stdr=stdrepr, corr=corr)
 
@@ -260,7 +265,7 @@ class VICRegL(nn.Module):
 
         outputs = self.forward_networks(inputs, is_val)
         with torch.no_grad():
-            logs = self.compute_metrics(outputs)
+            logs = self.compute_metrics(outputs, is_val)
         loss = 0.0
 
         # Global criterion
@@ -269,7 +274,11 @@ class VICRegL(nn.Module):
                 outputs["embedding"]
             )
             loss = loss + self.cfg.MODEL.ALPHA * (inv_loss + var_loss + cov_loss)
-            logs.update(dict(inv_l=inv_loss, var_l=var_loss, cov_l=cov_loss, ))
+            if is_val:
+                logs.update(dict(eval_inv_l=inv_loss, eval_var_l=var_loss, eval_cov_l=cov_loss, eval_loss=loss))
+            else:
+                logs.update(dict(train_inv_l=inv_loss, train_var_l=var_loss, train_cov_l=cov_loss, train_loss=loss))
+            
         # Local criterion
         # Maps shape: B, C, H, W
         # With convnext actual maps shape is: B, H * W, C

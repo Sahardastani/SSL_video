@@ -183,7 +183,7 @@ class R2Plus1DNet(nn.Module):
         # global average pooling of the output
         self.pool = nn.AdaptiveAvgPool3d(1)
 
-    def forward(self, x):
+    def forward(self, x): #[5, 3, 8, 224, 224]
         x = self.conv1(x)
         x1 = x  # torch.Size([5, 64, 8, 112, 112])
         x = self.conv2(x)

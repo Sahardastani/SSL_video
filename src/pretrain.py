@@ -1,4 +1,12 @@
+import sys 
+sys.path.append("/home/sdastani/projects/rrg-ebrahimi/sdastani/SSL_video")
+
+
+
+
+import wandb
 import os
+
 import hydra
 import time 
 import json 
@@ -18,7 +26,16 @@ from src.utils import utils
 
 @hydra.main(version_base=None, config_path=configs_dir(), config_name="config")
 def run_pretraining(cfg: DictConfig) -> None:
-    
+
+    wandb.init(
+        config=OmegaConf.to_container(cfg, resolve=True),
+        reinit=True,
+        resume=True,
+        **cfg.wandb
+    )
+
+    utils.set_seed(cfg.common.seed)
+
     config = build_config(cfg)
     torch.backends.cudnn.benchmark = True
     init_distributed_mode(config)
@@ -26,8 +43,10 @@ def run_pretraining(cfg: DictConfig) -> None:
 
     # Downloads the kinetics dataset to the root folder specified in configs/datasets/kinetics.
     # Shows 10 clips from the same video.
-    dataset = Kinetics(cfg=config, mode="train", num_retries=10, get_flow=False)
-    train_loader = torch.utils.data.DataLoader(dataset=dataset, batch_size=config.TEST.BATCH_SIZE)
+    dataset_train = Kinetics(cfg=config, mode="train", num_retries=10, get_flow=False)
+    train_loader = torch.utils.data.DataLoader(dataset=dataset_train, batch_size=config.TEST.BATCH_SIZE)
+    # dataset_val = Kinetics(cfg=config, mode="val", num_retries=10)
+    # val_loader = torch.utils.data.DataLoader(dataset=dataset_val, batch_size=config.TEST.BATCH_SIZE)
 
     model = VICRegL(cfg=config).cuda(gpu)
     model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
@@ -35,17 +54,17 @@ def run_pretraining(cfg: DictConfig) -> None:
 
     optimizer = build_optimizer(config, model)
 
-    if os.path.isfile((os.path.join(config.MODEL.EXP_DIR, "model.pth"))):
-        if config.rank == 0:
-            print("resuming from checkpoint")
-        ckpt = torch.load(os.path.join(config.MODEL.EXP_DIR, "model.pth"), map_location="cpu")
-        start_epoch = ckpt["epoch"]
-        model.load_state_dict(ckpt["model"])
-        optimizer.load_state_dict(ckpt["optimizer"])
-    else:
-        start_epoch = 0
+    # if os.path.isfile((os.path.join(config.MODEL.EXP_DIR, "model.pth"))):
+    #     if config.rank == 0:
+    #         print("resuming from checkpoint")
+    #     ckpt = torch.load(os.path.join(config.MODEL.EXP_DIR, "model.pth"), map_location="cpu")
+    #     start_epoch = ckpt["epoch"]
+    #     model.load_state_dict(ckpt["model"])
+    #     optimizer.load_state_dict(ckpt["optimizer"])
+    # else:
+    #     start_epoch = 0
 
-    # start_epoch = 0
+    start_epoch = 0
 
     for epoch in range(start_epoch, config.MODEL.EPOCHS):
         for step, inputs in enumerate(train_loader, start=epoch * len(train_loader)):
@@ -69,7 +88,22 @@ def run_pretraining(cfg: DictConfig) -> None:
             loss, logs = model.forward(make_inputs(inputs[0], gpu))
             loss.backward()
             optimizer.step()
+
+            wandb.log({'epoch': epoch, **logs}) #instead of dic if we have list we should use single astrik
+
         utils.checkpoint(config, epoch + 1, step, model, optimizer)
+
+        # # evaluate
+        # loss_val, logs_val = evaluate(model, logs, val_loader, epoch, lr, gpu)
+        # wandb.log({**logs_val})
+
+# def evaluate(model, logs, val_loader, epoch, lr, gpu):
+#     model.eval()
+    
+#     for inputs in val_loader:
+#         with torch.no_grad():
+#             loss, logs = model.forward(make_inputs(inputs[0], gpu), is_val=True)
+#     return loss, logs 
 
 if __name__ == "__main__":
     run_pretraining()

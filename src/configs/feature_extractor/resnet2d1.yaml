@@ -2,7 +2,7 @@ name: resnet2d1
 
 # Model config
 ARCH: "resnet2d1"
-EPOCHS: 1
+EPOCHS: 20
 OPTIMIZER: "lars"
 MLP: "8192-8192-8192"
 MAPS_MLP: "512-512-512"
