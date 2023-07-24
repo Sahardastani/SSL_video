@@ -11,8 +11,7 @@ from einops import rearrange
 from matplotlib import pyplot as plt
 from omegaconf import DictConfig
 
-from src.utils.data_utils import get_random_sampling_rate, tensor_normalize, spatial_sampling, \
-    pack_pathway_output
+from src.utils.data_utils import get_random_sampling_rate, tensor_normalize, spatial_sampling, pack_pathway_output
 from src.datasets.decoder import decode
 from src.datasets.transform import VideoDataAugmentationDINO
 from src.datasets.video_container import get_video_container
@@ -326,8 +325,8 @@ class Kinetics(torch.utils.data.Dataset):
         """
         return len(self._path_to_videos)
     
-def make_inputs(inputs, gpu):
+# def make_inputs(inputs, gpu):
     
-    inputs = [clip.cuda(gpu, non_blocking=True) for clip in inputs]
+#     inputs = [clip.cuda(gpu, non_blocking=True) for clip in inputs]
     
-    return inputs
+#     return inputs

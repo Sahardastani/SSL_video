@@ -9,13 +9,14 @@ sys.path.append('/home/sdastani/projects/rrg-ebrahimi/sdastani/SSL_video/src')
 
 import numpy as np
 import torch
-import torch.nn.functional as F
 from torch import nn
+import pytorch_lightning as pl
+import torch.nn.functional as F
 
 from src.models.feature_extractors.r2p1d import R2Plus1DNet
 from src.utils import model_utils
 
-class VICRegL(nn.Module):
+class VICRegL(pl.LightningModule):
     def __init__(self, cfg):
         super().__init__()
         self.cfg = cfg
@@ -34,7 +35,7 @@ class VICRegL(nn.Module):
         if self.cfg.MODEL.ALPHA > 0.0:
             self.projector = model_utils.MLP(cfg.MODEL.MLP, self.representation_dim, norm_layer)
 
-        self.classifier = nn.Linear(self.representation_dim, self.cfg.MODEL.NUM_CLASSES)
+        self.classifier = nn.Linear(self.representation_dim, self.cfg.DATA.NUM_CLASSES)
 
     def _vicreg_loss(self, x, y):
         repr_loss = self.cfg.MODEL.INV_COEFF * F.mse_loss(x, y)
@@ -265,7 +266,7 @@ class VICRegL(nn.Module):
 
         outputs = self.forward_networks(inputs, is_val)
         with torch.no_grad():
-            logs = self.compute_metrics(outputs, is_val)
+            log = self.compute_metrics(outputs, is_val)
         loss = 0.0
 
         # Global criterion
@@ -275,9 +276,9 @@ class VICRegL(nn.Module):
             )
             loss = loss + self.cfg.MODEL.ALPHA * (inv_loss + var_loss + cov_loss)
             if is_val:
-                logs.update(dict(eval_inv_l=inv_loss, eval_var_l=var_loss, eval_cov_l=cov_loss, eval_loss=loss))
+                log.update(dict(eval_inv_l=inv_loss, eval_var_l=var_loss, eval_cov_l=cov_loss, eval_loss=loss))
             else:
-                logs.update(dict(train_inv_l=inv_loss, train_var_l=var_loss, train_cov_l=cov_loss, train_loss=loss))
+                log.update(dict(train_inv_l=inv_loss, train_var_l=var_loss, train_cov_l=cov_loss, train_loss=loss))
             
         # Local criterion
         # Maps shape: B, C, H, W
@@ -293,7 +294,7 @@ class VICRegL(nn.Module):
         #     loss = loss + (1 - self.cfg.MODEL.ALPHA) * (
         #         maps_inv_loss + maps_var_loss + maps_cov_loss
         #     )
-        #     logs.update(
+        #     log.update(
         #         dict(minv_l=maps_inv_loss, mvar_l=maps_var_loss, mcov_l=maps_cov_loss,)
         #     )
 
@@ -303,17 +304,37 @@ class VICRegL(nn.Module):
         # classif_loss = F.cross_entropy(outputs["logits"][0], labels)
         # acc1, acc5 = model_utils.accuracy(outputs["logits"][0], labels, topk=(1, 5))
         # loss = loss + classif_loss
-        # logs.update(dict(cls_l=classif_loss, top1=acc1, top5=acc5, l=loss))
+        # log.update(dict(cls_l=classif_loss, top1=acc1, top5=acc5, l=loss))
         # if is_val:
         #     classif_loss_val = F.cross_entropy(outputs["logits_val"][0], labels)
         #     acc1_val, acc5_val = model_utils.accuracy(
         #         outputs["logits_val"][0], labels, topk=(1, 5)
         #     )
-        #     logs.update(
+        #     log.update(
         #         dict(clsl_val=classif_loss_val, top1_val=acc1_val, top5_val=acc5_val,)
         #     )
 
-        return loss, logs
+        return loss, log
+
+    def training_step(self, train_batch, batch_idx):
+        x = train_batch
+        loss, log = self.forward(x[0])
+        return loss
+    
+    # def validation_step(self, val_batch, batch_idx):
+    #     x = val_batch
+    #     loss, log = self.forward(x[0])
+    #     return loss, log 
+    
+    def configure_optimizers(self):
+        if self.cfg.MODEL.OPTIMIZER == "adamw":
+            optimizer = torch.optim.AdamW(self.parameters(), lr=1e-3)
+            return optimizer
+        elif self.cfg.MODEL.OPTIMIZER == "adam":
+            optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+            return optimizer
+        else:
+            print(f"{self.cfg.MODEL.OPTIMIZER} is not in the optimizer list.")
 
 
 def batched_index_select(input, dim, index):

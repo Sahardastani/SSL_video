@@ -13,7 +13,13 @@ wandb:
   tags: null 
   notes: null 
 
+initialization:
+  path_to_checkpoint: null 
+
 common:
+  device: "cuda"
+  batch_size: 5
+  epochs: 20
   seed: 100
 
 split: 'train'
