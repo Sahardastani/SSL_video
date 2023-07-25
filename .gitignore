@@ -9,6 +9,7 @@ experiments/
 k400/
 runs/
 lightning_logs/
+wandb/
 
 */*/__pycache__
 */*/*__pycache__*
