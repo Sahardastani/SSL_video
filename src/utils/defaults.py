@@ -10,7 +10,7 @@ class DataConfig:
     PATH_PREFIX: str
     PATH_TO_DATA_DIR: str | Any = None
     NUM_CLASSES: int = 400
-    # NUM_FRAMES: int = 8
+    NUM_FRAMES: int = 8
     SAMPLING_RATE: int = 32
     TRAIN_JITTER_SCALES: list = (256, 320)
     TRAIN_CROP_SIZE: int = 224
@@ -95,6 +95,9 @@ class TestConfig:
     # Dataset for testing.
     DATASET: str = "kinetics"
 
+    # Total mini-batch size
+    BATCH_SIZE: int = 5
+
     # Path to the checkpoint to load the initial weight.
     CHECKPOINT_FILE_PATH: str = ""
 
@@ -120,6 +123,9 @@ class TestConfig:
 @dataclass
 class ModelConfig:
 
+    # experiments directory
+    EXP_DIR: str = "/home/sdastani/scratch/SSL_video/experiments"
+
     # Model architecture that has one single pathway
     SINGLE_PATHWAY_ARCH: list = field(default_factory=lambda: ["c2d", "i3d", "slow", "x3d", "resnet2d1"])
 
@@ -132,14 +138,22 @@ class ModelConfig:
     # Model name
     MODEL_NAME: str = "ResNetVicRegL"
 
-    # Warmup epoch
-    WARMUP_EPOCHS: int = 4
+    # The device to use for training / testing
+    DEVICE: str = "cuda"
+
+    # The number of epochs
+    EPOCHS: int = 1
+
+    WARMUP_EPOCHS: int = 10
 
     # Optimizer
     OPTIMIZER: str = "lars"
 
     # Weight decay
     WEIGHT_DECAY: float = 0.05
+
+    # The number of classes to predict for the model.
+    NUM_CLASSES: int = 400
 
     # The embedding dimension of projector
     MLP: str = "8192-8192-8192"
@@ -197,7 +211,7 @@ class Config:
 
 
 def build_config(cfg: DictConfig) -> None:
-    PATH_PREFIX = os.path.expanduser(cfg['dataset']['PATH_PREFIX'])
+    PATH_PREFIX = os.path.expanduser(cfg['dirs']['PATH_PREFIX'])
     # This is to account for the downsample_videos.py path
     if 'trainvaltest' in cfg.keys():
         PATH_TO_DATA_DIR = os.path.join(PATH_PREFIX, cfg['split'])
@@ -206,7 +220,6 @@ def build_config(cfg: DictConfig) -> None:
 
     DATA = DataConfig(PATH_PREFIX=PATH_PREFIX,
                       PATH_TO_DATA_DIR=PATH_TO_DATA_DIR,
-                      NUM_CLASSES=cfg['dataset']['NUM_CLASSES'],
                       NUM_FRAMES=cfg['dataset']['NUM_FRAMES'],
                       SAMPLING_RATE=cfg['dataset']['SAMPLING_RATE'],
                       TRAIN_JITTER_SCALES=cfg['dataset']['TRAIN_JITTER_SCALES'],
@@ -216,8 +229,10 @@ def build_config(cfg: DictConfig) -> None:
                       PATH_LABEL_SEPARATOR=cfg['dataset']['PATH_LABEL_SEPARATOR'])
     DATA_LOADER = DataLoader(PIN_MEMORY=cfg['dataset']['PIN_MEMORY'],
                              NUM_WORKERS=cfg['dataset']['NUM_WORKERS'])
-    # TEST = TestConfig(BATCH_SIZE=cfg.common.batch_size)
-    MODEL = ModelConfig(ARCH=cfg['feature_extractor']['ARCH'],
+    TEST = TestConfig(BATCH_SIZE=cfg['model']['BATCH_SIZE'])
+    MODEL = ModelConfig(EXP_DIR=cfg['model']['EXP_DIR'],
+                        ARCH=cfg['feature_extractor']['ARCH'],
+                        EPOCHS=cfg['feature_extractor']['EPOCHS'],
                         OPTIMIZER=cfg['feature_extractor']['OPTIMIZER'],
                         MLP=cfg['feature_extractor']['MLP'],
                         MAPS_MLP=cfg['feature_extractor']['MAPS_MLP'],
@@ -232,7 +247,7 @@ def build_config(cfg: DictConfig) -> None:
     config = Config(DATA=DATA,
                     MULTIGRID=MultiGrid(),
                     DATA_LOADER=DATA_LOADER,
-                    TEST=TestConfig(),
+                    TEST=TEST,
                     MODEL=MODEL,
                     DISTRIBUTE=DISTRIBUTE)
     return config

@@ -1,3 +1,6 @@
+import sys 
+sys.path.append("/home/sdastani/scratch/SSL_video")
+
 import os
 
 import hydra
@@ -9,7 +12,7 @@ from src import configs_dir
 
 
 @hydra.main(version_base=None, config_path=configs_dir(),
-            config_name="prepare_csv")
+            config_name="config")
 def parse_csvs(cfg: DictConfig) -> None:
     config = build_config(cfg)
     split = ['train', 'val', 'test']

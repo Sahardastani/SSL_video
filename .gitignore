@@ -8,6 +8,7 @@ checkpoints/
 experiments/
 k400/
 runs/
+lightning_logs/
 
 */*/__pycache__
 */*/*__pycache__*

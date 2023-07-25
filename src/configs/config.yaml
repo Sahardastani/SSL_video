@@ -3,6 +3,7 @@ defaults:
   - dataset: kinetics
   - feature_extractor: resnet2d1
   - model: vicregl
+  - dirs: my_dir
 
 wandb:
   mode: offline

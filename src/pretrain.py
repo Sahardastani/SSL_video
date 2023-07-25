@@ -1,5 +1,5 @@
 import sys 
-sys.path.append("/home/sdastani/projects/rrg-ebrahimi/sdastani/SSL_video")
+sys.path.append("/home/sdastani/scratch/SSL_video")
 
 
 
