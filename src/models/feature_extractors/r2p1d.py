@@ -200,7 +200,7 @@ class R2Plus1DNet(nn.Module):
         # x5 = x  # torch.Size([5, 512, 1, 14, 14])
 
         # This will reshape the tensor to torch.Size([5 * 1 * 14 * 14, 512])
-        maps = x.view(5, -1, 512)
+        maps = x.flatten(start_dim=2, end_dim=4).permute(0,2,1)
 
         x = self.pool(x)
         x_pool = x  # torch.Size([5, 512, 1, 1, 1])

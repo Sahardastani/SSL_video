@@ -9,7 +9,7 @@ wandb:
   mode: offline
   project: video_ssl_project
   entity: null
-  name: local/test1
+  name: local_new/test1
   group: null 
   tags: null 
   notes: null 
@@ -19,8 +19,8 @@ initialization:
 
 common:
   device: "cuda"
-  batch_size: 5
-  epochs: 20
+  batch_size: 2
+  epochs: 2
   seed: 100
 
 split: 'train'

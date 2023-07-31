@@ -103,7 +103,7 @@ class VICRegL(pl.LightningModule):
         # Location based matching
         # location_1 = location_1.flatten(1, 2)
         # location_2 = location_2.flatten(1, 2)
-        print('all about shape', location_1.shape, location_2.shape, maps_1.shape, maps_2.shape)
+        
         maps_1_filtered, maps_1_nn = neirest_neighbores_on_location(
             location_1,
             location_2,
@@ -221,9 +221,17 @@ class VICRegL(pl.LightningModule):
             core = correlation_metric(embedding)
             stdemb = std_metric(embedding)
             if is_val:
-                return dict(eval_stdr=stdrepr, eval_stde=stdemb, eval_corr=corr, eval_core=core)
+                self.log('eval_stdr', stdrepr)
+                self.log('eval_stde', stdemb)
+                self.log('eval_corr', corr)
+                self.log('eval_core', core)
+                # return dict(eval_stdr=stdrepr, eval_stde=stdemb, eval_corr=corr, eval_core=core)
             else:
-                return dict(train_stdr=stdrepr, train_stde=stdemb, train_corr=corr, train_core=core)
+                self.log('train_stdr', stdrepr)
+                self.log('train_stde', stdemb)
+                self.log('train_corr', corr)
+                self.log('train_core', core)
+                # return dict(train_stdr=stdrepr, train_stde=stdemb, train_corr=corr, train_core=core)
 
         return dict(stdr=stdrepr, corr=corr)
 
@@ -266,7 +274,7 @@ class VICRegL(pl.LightningModule):
 
         outputs = self.forward_networks(inputs[0], is_val)
         with torch.no_grad():
-            log = self.compute_metrics(outputs, is_val)
+            self.compute_metrics(outputs, is_val)
         loss = 0.0
 
         # Global criterion
@@ -276,9 +284,17 @@ class VICRegL(pl.LightningModule):
             )
             loss = loss + self.cfg.MODEL.ALPHA * (inv_loss + var_loss + cov_loss)
             if is_val:
-                log.update(dict(eval_inv_l=inv_loss, eval_var_l=var_loss, eval_cov_l=cov_loss, eval_loss=loss))
+                self.log('eval_inv_l', inv_loss)
+                self.log('eval_var_l', var_loss)
+                self.log('eval_cov_l', cov_loss)
+                self.log('eval_loss', loss)
+                # log.update(dict(eval_inv_l=inv_loss, eval_var_l=var_loss, eval_cov_l=cov_loss, eval_loss=loss))
             else:
-                log.update(dict(train_inv_l=inv_loss, train_var_l=var_loss, train_cov_l=cov_loss, train_loss=loss))
+                self.log('train_inv_l', inv_loss)
+                self.log('train_var_l', var_loss)
+                self.log('train_cov_l', cov_loss)
+                self.log('train_loss', loss)
+                # log.update(dict(train_inv_l=inv_loss, train_var_l=var_loss, train_cov_l=cov_loss, train_loss=loss))
             
         # Local criterion
         # Maps shape: B, C, H, W
@@ -294,9 +310,10 @@ class VICRegL(pl.LightningModule):
             loss = loss + (1 - self.cfg.MODEL.ALPHA) * (
                 maps_inv_loss + maps_var_loss + maps_cov_loss
             )
-            log.update(
-                dict(minv_l=maps_inv_loss, mvar_l=maps_var_loss, mcov_l=maps_cov_loss)
-            )
+            self.log('minv_l', maps_inv_loss)
+            self.log('mvar_l', maps_var_loss)
+            self.log('mcov_l', maps_cov_loss)
+            # log.update(dict(minv_l=maps_inv_loss, mvar_l=maps_var_loss, mcov_l=maps_cov_loss))
 
         # # Online classification
 
@@ -314,17 +331,17 @@ class VICRegL(pl.LightningModule):
         #         dict(clsl_val=classif_loss_val, top1_val=acc1_val, top5_val=acc5_val,)
         #     )
 
-        return loss, log
+        return loss
 
     def training_step(self, train_batch, batch_idx):
         x = train_batch
-        loss, log = self.forward(x)
+        loss = self.forward(x)
         return loss
     
     # def validation_step(self, val_batch, batch_idx):
     #     x = val_batch
-    #     loss, log = self.forward(x[0])
-    #     return loss, log 
+    #     loss = self.forward(x[0])
+    #     return loss
     
     def configure_optimizers(self):
         if self.cfg.MODEL.OPTIMIZER == "adamw":

@@ -43,14 +43,17 @@ def run_pretraining(cfg: DictConfig) -> None:
 
     model = VICRegL(cfg=config)
 
+    wandb_logger = WandbLogger(project=cfg.wandb.name, offline = True)
+
     trainer = pl.Trainer(devices=torch.cuda.device_count(), 
                          strategy='ddp_find_unused_parameters_true',
-                         max_epochs=cfg.common.epochs)
+                         max_epochs=cfg.common.epochs,
+                         logger=wandb_logger)
+
+    wandb_logger.watch(model, log="all")
 
     trainer.fit(model, train_loader)
 
-    wandb_logger = WandbLogger(project=cfg.wandb.name)
-    wandb_logger.watch(model, log="all")
     wandb.finish()
 
 if __name__ == "__main__":
