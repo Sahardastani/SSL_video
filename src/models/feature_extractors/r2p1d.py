@@ -180,25 +180,32 @@ class R2Plus1DNet(nn.Module):
         self.conv5 = SpatioTemporalResLayer(256, 512, 3, layer_sizes[3], block_type=block_type,
                                             downsample=True)
 
+        self.conv6 = SpatioTemporalResLayer(512, 512, 3, layer_sizes[4], block_type=block_type,
+                                            downsample=True)
+
         # global average pooling of the output
         self.pool = nn.AdaptiveAvgPool3d(1)
 
     def forward(self, x): #[5, 3, 8, 224, 224]
         x = self.conv1(x)
-        x1 = x  # torch.Size([5, 64, 8, 112, 112])
+        # x1 = x  # torch.Size([5, 64, 8, 112, 112])
         x = self.conv2(x)
-        x2 = x  # torch.Size([5, 64, 8, 112, 112])
+        # x2 = x  # torch.Size([5, 64, 8, 112, 112])
         x = self.conv3(x)
-        x3 = x  # torch.Size([5, 128, 4, 56, 56])
+        # x3 = x  # torch.Size([5, 128, 4, 56, 56])
         x = self.conv4(x)
-        x4 = x  # torch.Size([5, 256, 2, 28, 28])
+        # x4 = x  # torch.Size([5, 256, 2, 28, 28])
         x = self.conv5(x)
-        x5 = x  # torch.Size([5, 512, 1, 14, 14])
+        x = self.conv6(x)
+        # x5 = x  # torch.Size([5, 512, 1, 14, 14])
+
+        # This will reshape the tensor to torch.Size([5 * 1 * 14 * 14, 512])
+        maps = x.view(5, -1, 512)
 
         x = self.pool(x)
         x_pool = x  # torch.Size([5, 512, 1, 1, 1])
 
-        return x.view(-1, 512), [x1, x2, x3, x4, x5, x_pool]
+        return maps, x.view(-1, 512)
         # torch.Size([5, 512])
 
 
@@ -225,3 +232,8 @@ class R2Plus1DClassifier(nn.Module):
         x = self.linear(x)
 
         return x
+
+import torch 
+model = R2Plus1DNet([1, 1, 1, 1, 1])
+x = torch.randn(5, 3, 8, 224, 224)
+out = model(x)

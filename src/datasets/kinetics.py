@@ -292,7 +292,7 @@ class Kinetics(torch.utils.data.Dataset):
 
                 # Perform data augmentation.
                 augmentation = VideoDataAugmentationDINO()
-                frames = augmentation(frames, from_list=True, no_aug=self.cfg.DATA.NO_SPATIAL)
+                frames, locations = augmentation(frames, from_list=True, no_aug=self.cfg.DATA.NO_SPATIAL)
 
                 # T C H W -> C T H W.
                 frames = [rearrange(x, "t c h w -> c t h w") for x in frames]
@@ -309,7 +309,7 @@ class Kinetics(torch.utils.data.Dataset):
                 ) for x in frames]
 
             meta_data = {}
-            return frames, label, index, meta_data
+            return frames, locations, label, index, meta_data
 
         else:
             raise RuntimeError(

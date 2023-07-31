@@ -40,7 +40,6 @@ def run_pretraining(cfg: DictConfig) -> None:
 
     dataset = Kinetics(cfg=config, mode="train", num_retries=10, get_flow=False)
     train_loader = torch.utils.data.DataLoader(dataset=dataset, batch_size=cfg.common.batch_size)
-    # val_loader = torch.utils.data.DataLoader(dataset=dataset, batch_size=cfg.common.batch_size)
 
     model = VICRegL(cfg=config)
 

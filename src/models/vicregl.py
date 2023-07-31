@@ -101,9 +101,9 @@ class VICRegL(pl.LightningModule):
         inv_loss = inv_loss + (inv_loss_1 / 2 + inv_loss_2 / 2)
 
         # Location based matching
-        location_1 = location_1.flatten(1, 2)
-        location_2 = location_2.flatten(1, 2)
-
+        # location_1 = location_1.flatten(1, 2)
+        # location_2 = location_2.flatten(1, 2)
+        print('all about shape', location_1.shape, location_2.shape, maps_1.shape, maps_2.shape)
         maps_1_filtered, maps_1_nn = neirest_neighbores_on_location(
             location_1,
             location_2,
@@ -236,18 +236,18 @@ class VICRegL(pl.LightningModule):
             "logits_val": [],
         }
         for x in inputs:
-            representation, list_x1_x5_and_xpool = self.backbone(x)
+            maps, representation = self.backbone(x)
             outputs["representation"].append(representation)
 
             if self.cfg.MODEL.ALPHA > 0.0:
                 embedding = self.projector(representation)
                 outputs["embedding"].append(embedding)
 
-        #     if self.cfg.MODEL.ALPHA < 1.0:
-        #         batch_size, num_loc, _ = maps.shape
-        #         maps_embedding = self.maps_projector(maps.flatten(start_dim=0, end_dim=1))
-        #         maps_embedding = maps_embedding.view(batch_size, num_loc, -1)
-        #         outputs["maps_embedding"].append(maps_embedding)
+            if self.cfg.MODEL.ALPHA < 1.0:
+                batch_size, num_loc, _ = maps.shape
+                maps_embedding = self.maps_projector(maps.flatten(start_dim=0, end_dim=1))
+                maps_embedding = maps_embedding.view(batch_size, num_loc, -1)
+                outputs["maps_embedding"].append(maps_embedding)
 
         #     logits = self.classifier(representation.detach())
         #     outputs["logits"].append(logits)
@@ -264,7 +264,7 @@ class VICRegL(pl.LightningModule):
         #     maps, _ = self.backbone(inputs)
         #     return maps
 
-        outputs = self.forward_networks(inputs, is_val)
+        outputs = self.forward_networks(inputs[0], is_val)
         with torch.no_grad():
             log = self.compute_metrics(outputs, is_val)
         loss = 0.0
@@ -283,20 +283,20 @@ class VICRegL(pl.LightningModule):
         # Local criterion
         # Maps shape: B, C, H, W
         # With convnext actual maps shape is: B, H * W, C
-        # if self.cfg.MODEL.ALPHA < 1.0:
-        #     (
-        #         maps_inv_loss,
-        #         maps_var_loss,
-        #         maps_cov_loss,
-        #     ) = self.local_loss(
-        #         outputs["maps_embedding"], inputs["locations"]
-        #     )
-        #     loss = loss + (1 - self.cfg.MODEL.ALPHA) * (
-        #         maps_inv_loss + maps_var_loss + maps_cov_loss
-        #     )
-        #     log.update(
-        #         dict(minv_l=maps_inv_loss, mvar_l=maps_var_loss, mcov_l=maps_cov_loss,)
-        #     )
+        if self.cfg.MODEL.ALPHA < 1.0:
+            (
+                maps_inv_loss,
+                maps_var_loss,
+                maps_cov_loss,
+            ) = self.local_loss(
+                outputs["maps_embedding"], inputs[1]
+            )
+            loss = loss + (1 - self.cfg.MODEL.ALPHA) * (
+                maps_inv_loss + maps_var_loss + maps_cov_loss
+            )
+            log.update(
+                dict(minv_l=maps_inv_loss, mvar_l=maps_var_loss, mcov_l=maps_cov_loss)
+            )
 
         # # Online classification
 
@@ -318,7 +318,7 @@ class VICRegL(pl.LightningModule):
 
     def training_step(self, train_batch, batch_idx):
         x = train_batch
-        loss, log = self.forward(x[0])
+        loss, log = self.forward(x)
         return loss
     
     # def validation_step(self, val_batch, batch_idx):
@@ -405,7 +405,7 @@ def neirest_neighbores_on_location(
     input_maps: (B, H * W, C)
     candidate_maps: (B, H * W, C)
     """
-    distances = torch.cdist(input_location, candidate_location)
+    distances = torch.cdist(input_location.float(), candidate_location.float())
     return neirest_neighbores(input_maps, candidate_maps, distances, num_matches)
 
 

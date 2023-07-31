@@ -183,7 +183,7 @@ class ModelConfig:
     FAST_VC_REG: int = 0
 
     # The number of spatial matches in a feature map
-    NUM_MATCHES: int = 20 #4
+    NUM_MATCHES: list = field(default_factory=lambda: [2, 4])
 
     # Checkpoint frequency
     CHECKPOINT_FREQ: int = 1

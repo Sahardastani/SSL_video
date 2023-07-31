@@ -10,6 +10,7 @@ k400/
 runs/
 lightning_logs/
 wandb/
+.hydra/
 
 */*/__pycache__
 */*/*__pycache__*

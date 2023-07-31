@@ -9,7 +9,7 @@ wandb:
   mode: offline
   project: video_ssl_project
   entity: null
-  name: global_seed/test1
+  name: local/test1
   group: null 
   tags: null 
   notes: null 
