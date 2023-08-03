@@ -211,6 +211,7 @@ class Config:
 
 
 def build_config(cfg: DictConfig) -> None:
+    current=cfg['dirs']['current']
     PATH_PREFIX = os.path.expanduser(cfg['dirs']['PATH_PREFIX'])
     # This is to account for the downsample_videos.py path
     if 'trainvaltest' in cfg.keys():

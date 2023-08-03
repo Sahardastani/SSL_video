@@ -5,7 +5,7 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 import sys
-sys.path.append('/home/sdastani/projects/rrg-ebrahimi/sdastani/SSL_video/src')
+sys.path.append('/home/sdastani/scratch/SSL_video/src')
 
 import numpy as np
 import torch

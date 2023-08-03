@@ -6,6 +6,7 @@ sys.path.append("/home/sdastani/scratch/SSL_video")
 
 import wandb
 import os
+os.environ["WANDB_MODE"]="offline"
 
 import hydra
 import time 
@@ -29,30 +30,35 @@ def run_pretraining(cfg: DictConfig) -> None:
 
     config = build_config(cfg)
 
-    wandb.init(
-        config=OmegaConf.to_container(cfg, resolve=True),
-        reinit=True,
-        resume=True,
-        **cfg.wandb
-    )
+    # wandb.init(
+    #     config=OmegaConf.to_container(cfg, resolve=True),
+    #     reinit=True,
+    #     resume=True,
+    #     **cfg.wandb,
+    # )
 
     utils.set_seed(cfg.common.seed)
 
     dataset = Kinetics(cfg=config, mode="train", num_retries=10, get_flow=False)
-    train_loader = torch.utils.data.DataLoader(dataset=dataset, batch_size=cfg.common.batch_size)
+    train_loader = torch.utils.data.DataLoader(dataset=dataset, batch_size=cfg.common.batch_size, drop_last=True)
 
     model = VICRegL(cfg=config)
 
-    wandb_logger = WandbLogger(project=cfg.wandb.name, offline = True)
-
+    wandb_logger = WandbLogger(config=OmegaConf.to_container(cfg, resolve=True), 
+                                project=cfg.wandb.name, 
+                                offline = True)
+    
     trainer = pl.Trainer(devices=torch.cuda.device_count(), 
                          strategy='ddp_find_unused_parameters_true',
                          max_epochs=cfg.common.epochs,
-                         logger=wandb_logger)
+                         logger=wandb_logger,)
+                        #  log_every_n_steps=1)
 
     wandb_logger.watch(model, log="all")
 
     trainer.fit(model, train_loader)
+
+    torch.save(model.state_dict(), os.path.join(cfg['dirs']['model_path'],'model.pt'))
 
     wandb.finish()
 

@@ -11,6 +11,9 @@ runs/
 lightning_logs/
 wandb/
 .hydra/
+models/
+outputs/
+
 
 */*/__pycache__
 */*/*__pycache__*
