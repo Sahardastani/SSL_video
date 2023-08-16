@@ -4,8 +4,6 @@
 
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
-import sys
-sys.path.append('/home/sdastani/scratch/SSL_video/src')
 
 import numpy as np
 import torch
@@ -13,7 +11,7 @@ from torch import nn
 import pytorch_lightning as pl
 import torch.nn.functional as F
 
-from src.models.feature_extractors.r2p1d import R2Plus1DNet
+from src.models.feature_extractors.r2p1d import OurVideoResNet
 from src.utils import model_utils
 
 class VICRegL(pl.LightningModule):
@@ -23,7 +21,7 @@ class VICRegL(pl.LightningModule):
         self.embedding_dim = int(cfg.MODEL.MLP.split("-")[-1])
 
         if "resnet" in cfg.MODEL.ARCH:
-            self.backbone, self.representation_dim = R2Plus1DNet(cfg.MODEL.LAYER_SIZES), 512
+            self.backbone, self.representation_dim = OurVideoResNet(), 512
             norm_layer = "batch_norm"
         else:
             raise Exception(f"Unsupported backbone {cfg.MODEL.ARCH}.")
@@ -243,8 +241,10 @@ class VICRegL(pl.LightningModule):
             "logits": [],
             "logits_val": [],
         }
-        for x in inputs:
-            maps, representation = self.backbone(x)
+        for x in inputs[0:2]:
+            out = self.backbone(x)
+            maps = out.layer4_out.flatten(start_dim=2, end_dim=4).permute(0,2,1)
+            representation = out.layer_pool_out.view(-1, 512)
             outputs["representation"].append(representation)
 
             if self.cfg.MODEL.ALPHA > 0.0:
@@ -252,9 +252,10 @@ class VICRegL(pl.LightningModule):
                 outputs["embedding"].append(embedding)
 
             if self.cfg.MODEL.ALPHA < 1.0:
-                batch_size, num_loc, _ = maps.shape
-                maps_embedding = self.maps_projector(maps.flatten(start_dim=0, end_dim=1))
-                maps_embedding = maps_embedding.view(batch_size, num_loc, -1)
+                breakpoint()
+                batch_size, num_loc, _ = maps.shape #torch.Size([2, 49, 512])
+                maps_embedding = self.maps_projector(maps.flatten(start_dim=0, end_dim=1)) #torch.Size([98, 512])
+                maps_embedding = maps_embedding.view(batch_size, num_loc, -1) #torch.Size([2, 49, 512])
                 outputs["maps_embedding"].append(maps_embedding)
 
         #     logits = self.classifier(representation.detach())
@@ -305,8 +306,12 @@ class VICRegL(pl.LightningModule):
                 maps_var_loss,
                 maps_cov_loss,
             ) = self.local_loss(
-                outputs["maps_embedding"], inputs[1]
+                outputs["maps_embedding"], inputs[1][0:2]
             )
+
+            # outputs["maps_embedding"] : [torch.Size([2, 49, 512]), torch.Size([2, 49, 512])]
+            # inputs[1][0:2]            : [torch.Size([2, 8, 1]), torch.Size([2, 8, 1])]
+
             loss = loss + (1 - self.cfg.MODEL.ALPHA) * (
                 maps_inv_loss + maps_var_loss + maps_cov_loss
             )

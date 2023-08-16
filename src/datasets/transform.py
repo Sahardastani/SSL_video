@@ -698,7 +698,7 @@ class VideoDataAugmentationDINO(object):
 
     # first global crop
     def global_transform1(self, frames):
-        frames = random_resized_crop(frames, size=224, scale=self.global_crops_scale, interpolation="bicubic")
+        frames = random_resized_crop(frames, size=112, scale=self.global_crops_scale, interpolation="bicubic")
         frames = self.flip_and_color_jitter(frames)
         frames = self.gaussian_blur(frames)
         frames = self.normalize(frames)
@@ -706,7 +706,7 @@ class VideoDataAugmentationDINO(object):
 
     # second global crop
     def global_transform2(self, frames):
-        frames = random_resized_crop(frames, size=224, scale=self.global_crops_scale, interpolation="bicubic")
+        frames = random_resized_crop(frames, size=112, scale=self.global_crops_scale, interpolation="bicubic")
         frames = self.flip_and_color_jitter(frames)
         if np.random.uniform() < 0.1:
             frames = self.gaussian_blur(frames)
@@ -717,7 +717,7 @@ class VideoDataAugmentationDINO(object):
 
     # transformation for the local small crops
     def local_transform(self, frames): 
-        frames = random_resized_crop(frames, size=96, scale=self.local_crops_scale, interpolation="bicubic")
+        frames = random_resized_crop(frames, size=112, scale=self.local_crops_scale, interpolation="bicubic")
         frames = self.flip_and_color_jitter(frames)
         if np.random.uniform() < 0.5:
             frames = self.gaussian_blur(frames)
