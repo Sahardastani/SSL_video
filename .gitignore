@@ -5,24 +5,15 @@ mlruns
 outputs/
 data/
 checkpoints/
-jobs/
+experiments/
 k400/
+runs/
+lightning_logs/
+wandb/
+.hydra/
+models/
+outputs/
 
-*/*/__pycache__
-*/*/*__pycache__*
-*/*/*.swp
-*/*/*.pyc
-*/action_recognition/checkpoints/*
-*/action_recognition/checkpoints_prev/*
-*/action_recognition/logs_camera_ready/
-*/ssl_benchmark/out_*
-*/*/*/*.pyc
-*/*/*/*/*.pyc
-*/*/*/*/*/*.pyc
-*/*/*/*/*/*/*.pyc
-*/checkpoints_pretraining/*/*
-*/Repetition-Counting/data/results/*
-*/checkpoints_pretraining_bkp/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

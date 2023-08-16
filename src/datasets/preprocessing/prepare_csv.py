@@ -1,15 +1,18 @@
+import sys 
+sys.path.append("/home/sdastani/scratch/SSL_video")
+
 import os
 
 import hydra
 import pandas as pd
 from omegaconf import DictConfig
 
-from datasets.kinetics import build_config
+from src.datasets.kinetics import build_config
 from src import configs_dir
 
 
 @hydra.main(version_base=None, config_path=configs_dir(),
-            config_name="prepare_csv")
+            config_name="config")
 def parse_csvs(cfg: DictConfig) -> None:
     config = build_config(cfg)
     split = ['train', 'val', 'test']

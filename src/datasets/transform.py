@@ -698,7 +698,7 @@ class VideoDataAugmentationDINO(object):
 
     # first global crop
     def global_transform1(self, frames):
-        frames = random_resized_crop(frames, size=224, scale=self.global_crops_scale, interpolation="bicubic")
+        frames = random_resized_crop(frames, size=112, scale=self.global_crops_scale, interpolation="bicubic")
         frames = self.flip_and_color_jitter(frames)
         frames = self.gaussian_blur(frames)
         frames = self.normalize(frames)
@@ -706,7 +706,7 @@ class VideoDataAugmentationDINO(object):
 
     # second global crop
     def global_transform2(self, frames):
-        frames = random_resized_crop(frames, size=224, scale=self.global_crops_scale, interpolation="bicubic")
+        frames = random_resized_crop(frames, size=112, scale=self.global_crops_scale, interpolation="bicubic")
         frames = self.flip_and_color_jitter(frames)
         if np.random.uniform() < 0.1:
             frames = self.gaussian_blur(frames)
@@ -717,7 +717,7 @@ class VideoDataAugmentationDINO(object):
 
     # transformation for the local small crops
     def local_transform(self, frames): 
-        frames = random_resized_crop(frames, size=96, scale=self.local_crops_scale, interpolation="bicubic")
+        frames = random_resized_crop(frames, size=112, scale=self.local_crops_scale, interpolation="bicubic")
         frames = self.flip_and_color_jitter(frames)
         if np.random.uniform() < 0.5:
             frames = self.gaussian_blur(frames)
@@ -737,8 +737,10 @@ class VideoDataAugmentationDINO(object):
         elif from_list:
             image = [x.float() / 255.0 if x.dtype == torch.uint8 else x for x in image]
             crops = [self.global_transform1(image[0]), self.global_transform2(image[1])]
+            locations = [torch.arange(8).unsqueeze(1) for _ in range(2)]
             for local_image in image[2:]:
                 crops.append(self.local_transform(local_image))
+                locations.append(torch.arange(8).unsqueeze(1))
         else:
             if image.dtype == torch.uint8:
                 image = image.float()
@@ -746,4 +748,5 @@ class VideoDataAugmentationDINO(object):
             crops = [self.global_transform1(image), self.global_transform2(image)]
             for _ in range(self.local_crops_number):
                 crops.append(self.local_transform(image))
-        return crops
+
+        return crops, locations

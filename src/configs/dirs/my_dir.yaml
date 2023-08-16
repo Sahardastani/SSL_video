@@ -1,0 +1,10 @@
+name: my_dir
+
+# current directory that SSL_VIDEO is located
+current: /home/sdastani/scratch/SSL_video
+
+model_path: /home/sdastani/scratch/SSL_video/models
+
+# Dataset directory
+PATH_PREFIX: /home/sdastani/scratch/SSL_video/k400
+

@@ -1,5 +1,0 @@
-src_dir: ~/datasets/kinetics-dataset/k400 # This is the directory of the videos we resize
-split: 'train'
-num_workers: 24
-
-dataset:

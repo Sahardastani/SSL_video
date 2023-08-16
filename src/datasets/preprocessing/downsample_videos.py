@@ -33,7 +33,7 @@ def downscale_clip_wrapper(folder_path, output_path, file_name):
 
 
 @hydra.main(version_base=None, config_path=configs_dir(),
-            config_name="downsample_videos")
+            config_name="config")
 def resize_videos(cfg: DictConfig) -> None:
     root_path = os.path.expanduser(cfg['src_dir'])
     split = cfg['split']
