@@ -14,6 +14,8 @@ import torch.nn.functional as F
 from src.models.feature_extractors.r2p1d import OurVideoResNet
 from src.utils import model_utils
 
+device = torch.device("cuda")
+
 class VICRegL(pl.LightningModule):
     def __init__(self, cfg):
         super().__init__()
@@ -26,9 +28,8 @@ class VICRegL(pl.LightningModule):
         else:
             raise Exception(f"Unsupported backbone {cfg.MODEL.ARCH}.")
 
-        if self.cfg.MODEL.ALPHA < 1.0:
-            self.maps_projector = model_utils.MLP(cfg.MODEL.MAPS_MLP, self.representation_dim,
-                                                  norm_layer)
+        # if self.cfg.MODEL.ALPHA < 1.0:
+        #     self.maps_projector = model_utils.MLP(cfg.MODEL.MAPS_MLP, self.representation_dim, norm_layer)
 
         if self.cfg.MODEL.ALPHA > 0.0:
             self.projector = model_utils.MLP(cfg.MODEL.MLP, self.representation_dim, norm_layer)
@@ -252,11 +253,49 @@ class VICRegL(pl.LightningModule):
                 outputs["embedding"].append(embedding)
 
             if self.cfg.MODEL.ALPHA < 1.0:
-                breakpoint()
-                batch_size, num_loc, _ = maps.shape #torch.Size([2, 49, 512])
-                maps_embedding = self.maps_projector(maps.flatten(start_dim=0, end_dim=1)) #torch.Size([98, 512])
-                maps_embedding = maps_embedding.view(batch_size, num_loc, -1) #torch.Size([2, 49, 512])
-                outputs["maps_embedding"].append(maps_embedding)
+                layers = [out.layer1_out, out.layer2_out, out.layer3_out, out.layer4_out]
+                representation_dim = [64, 128, 256, 512]
+
+                for index, layer in enumerate(layers):
+
+                    split_tensors = torch.split(layer, 1, dim=2) #split the frames
+                    stacked_split_tensors = torch.stack(split_tensors, dim=0) #torch.Size([8, 2, 64, 1, 56, 56])
+                    flattened_tensors = stacked_split_tensors.flatten(start_dim=3, end_dim=5).permute(0,1,3,2) #torch.Size([8, 2, 3136, 64])
+                    num_frames, batch_size, num_loc, embedding_dim = flattened_tensors.shape #torch.Size([8, 2, 3136, 64])
+                    flattened_tensors_reshaped = flattened_tensors.view(-1, num_loc, embedding_dim) #torch.Size([16, 3136, 64])
+
+                    MAPS_MLP = f'{representation_dim[index]}-{representation_dim[index]}-{representation_dim[index]}'
+                    maps_projector = model_utils.MLP(MAPS_MLP, representation_dim[index], norm_layer = "batch_norm").to(device)
+                    breakpoint()
+                    maps_embedding = maps_projector(flattened_tensors_reshaped)
+                    breakpoint()
+                    maps_embedding_reshaped = maps_embedding.view(batch_size, num_frames, num_loc, embedding_dim)
+                    outputs["maps_embedding"].append(maps_embedding_reshaped)
+                    breakpoint()
+
+
+                # for index, layer in enumerate(layers):
+                #     maps_projector = model_utils.MLP(self.cfg.MODEL.MAPS_MLP, representation_dim[index], norm_layer = "batch_norm").to(device)
+
+                #     split_tensors = torch.split(layer, 1, dim=2)
+                #     stacked_split_tensors = torch.stack(split_tensors, dim=0)
+                #     flattened_tensors = stacked_split_tensors.flatten(start_dim=3, end_dim=5).permute(0,1,3,2)
+
+                #     for frame in flattened_tensors:
+                #         batch_size, num_loc, _ = frame.shape #torch.Size([2, 49, 512])
+                #         maps_embedding = maps_projector(frame.flatten(start_dim=0, end_dim=1)) #torch.Size([98, 512])
+                #         maps_embedding = maps_embedding.view(batch_size, num_loc, -1) #torch.Size([2, 49, 512])
+                #         outputs["maps_embedding"].append(maps_embedding)
+                #         breakpoint()
+
+
+            # if self.cfg.MODEL.ALPHA < 1.0:
+            #     batch_size, num_loc, _ = maps.shape #torch.Size([2, 49, 512])
+            #     maps_embedding = self.maps_projector(maps.flatten(start_dim=0, end_dim=1)) #torch.Size([98, 512])
+            #     breakpoint()
+            #     maps_embedding = maps_embedding.view(batch_size, num_loc, -1) #torch.Size([2, 49, 512])
+            #     outputs["maps_embedding"].append(maps_embedding)
+            #     breakpoint()
 
         #     logits = self.classifier(representation.detach())
         #     outputs["logits"].append(logits)
@@ -301,6 +340,7 @@ class VICRegL(pl.LightningModule):
         # Maps shape: B, C, H, W
         # With convnext actual maps shape is: B, H * W, C
         if self.cfg.MODEL.ALPHA < 1.0:
+            breakpoint()
             (
                 maps_inv_loss,
                 maps_var_loss,
@@ -308,7 +348,7 @@ class VICRegL(pl.LightningModule):
             ) = self.local_loss(
                 outputs["maps_embedding"], inputs[1][0:2]
             )
-
+            breakpoint()
             # outputs["maps_embedding"] : [torch.Size([2, 49, 512]), torch.Size([2, 49, 512])]
             # inputs[1][0:2]            : [torch.Size([2, 8, 1]), torch.Size([2, 8, 1])]
 

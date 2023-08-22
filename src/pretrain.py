@@ -1,3 +1,6 @@
+import sys
+sys.path.append('/home/sdastani/projects/rrg-ebrahimi/sdastani/SSL_video')
+
 import wandb
 import os
 os.environ["WANDB_MODE"]="offline"
