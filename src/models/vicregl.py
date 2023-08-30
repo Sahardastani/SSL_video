@@ -131,47 +131,60 @@ class VICRegL(pl.LightningModule):
 
         return inv_loss, var_loss, cov_loss
 
-    def local_loss(self, maps_embedding, locations):
-        num_views = len(maps_embedding)
-        inv_loss = 0.0
-        var_loss = 0.0
-        cov_loss = 0.0
-        iter_ = 0
-        for i in range(2):
-            for j in np.delete(np.arange(np.sum(num_views)), i):
-                inv_loss_this, var_loss_this, cov_loss_this = self._local_loss(
-                    maps_embedding[i], maps_embedding[j], locations[i], locations[j],
-                )
-                inv_loss = inv_loss + inv_loss_this
-                var_loss = var_loss + var_loss_this
-                cov_loss = cov_loss + cov_loss_this
-                iter_ += 1
-
-        if self.cfg.MODEL.FAST_VC_REG:
-            inv_loss = self.cfg.MODEL.INV_COEFF * inv_loss / iter_
+    def local_loss(self, maps_embedding, locations): 
+        # maps_embedding = [torch.Size([6, 1, 64]), torch.Size([6, 1, 64])]
+        # locations = [torch.Size([6, 8, 1]), torch.Size([6, 8, 1])]
+        loss = {
+            "inv_loss": [],
+            "var_loss": [],
+            "cov_loss": []
+        }
+        for k in range(maps_embedding[0].shape[0]):
+            each_frame_maps_embedding = [maps_embedding[0][k], maps_embedding[1][k]]
+            num_views = len(maps_embedding)
+            inv_loss = 0.0
             var_loss = 0.0
             cov_loss = 0.0
             iter_ = 0
-            for i in range(num_views):
-                x = model_utils.gather_center(maps_embedding[i])
-                std_x = torch.sqrt(x.var(dim=0) + 0.0001)
-                var_loss = var_loss + torch.mean(torch.relu(1.0 - std_x))
-                x = x.permute(1, 0, 2)
-                *_, sample_size, num_channels = x.shape
-                non_diag_mask = ~torch.eye(num_channels, device=x.device, dtype=torch.bool)
-                x = x - x.mean(dim=-2, keepdim=True)
-                cov_x = torch.einsum("...nc,...nd->...cd", x, x) / (sample_size - 1)
-                cov_loss = cov_x[..., non_diag_mask].pow(2).sum(-1) / num_channels
-                cov_loss = cov_loss + cov_loss.mean()
-                iter_ = iter_ + 1
-            var_loss = self.cfg.MODEL.VAR_COEFF * var_loss / iter_
-            cov_loss = self.cfg.MODEL.COV_COEFF * cov_loss / iter_
-        else:
-            inv_loss = inv_loss / iter_
-            var_loss = var_loss / iter_
-            cov_loss = cov_loss / iter_
+            for i in range(2):
+                for j in np.delete(np.arange(np.sum(num_views)), i):
+                    inv_loss_this, var_loss_this, cov_loss_this = self._local_loss(
+                        each_frame_maps_embedding[i], each_frame_maps_embedding[j], locations[i], locations[j],
+                    )
+                    inv_loss = inv_loss + inv_loss_this
+                    var_loss = var_loss + var_loss_this
+                    cov_loss = cov_loss + cov_loss_this
+                    iter_ += 1
 
-        return inv_loss, var_loss, cov_loss
+            if self.cfg.MODEL.FAST_VC_REG:
+                inv_loss = self.cfg.MODEL.INV_COEFF * inv_loss / iter_
+                var_loss = 0.0
+                cov_loss = 0.0
+                iter_ = 0
+                for i in range(num_views):
+                    x = model_utils.gather_center(each_frame_maps_embedding[i])
+                    std_x = torch.sqrt(x.var(dim=0) + 0.0001)
+                    var_loss = var_loss + torch.mean(torch.relu(1.0 - std_x))
+                    x = x.permute(1, 0, 2)
+                    *_, sample_size, num_channels = x.shape
+                    non_diag_mask = ~torch.eye(num_channels, device=x.device, dtype=torch.bool)
+                    x = x - x.mean(dim=-2, keepdim=True)
+                    cov_x = torch.einsum("...nc,...nd->...cd", x, x) / (sample_size - 1)
+                    cov_loss = cov_x[..., non_diag_mask].pow(2).sum(-1) / num_channels
+                    cov_loss = cov_loss + cov_loss.mean()
+                    iter_ = iter_ + 1
+                var_loss = self.cfg.MODEL.VAR_COEFF * var_loss / iter_
+                cov_loss = self.cfg.MODEL.COV_COEFF * cov_loss / iter_
+            else:
+                inv_loss = inv_loss / iter_
+                var_loss = var_loss / iter_
+                cov_loss = cov_loss / iter_
+            
+            loss["inv_loss"].append(inv_loss)
+            loss["var_loss"].append(var_loss)
+            loss["cov_loss"].append(cov_loss)
+
+        return sum(loss["inv_loss"]), sum(loss["var_loss"]), sum(loss["cov_loss"])
 
     def global_loss(self, embedding, maps=False):
         num_views = len(embedding)
@@ -238,11 +251,15 @@ class VICRegL(pl.LightningModule):
         outputs = {
             "representation": [],
             "embedding": [],
+            "layer_1": [],
+            "layer_2": [],
+            "layer_3": [],
+            "layer_4": [],
             "maps_embedding": [],
             "logits": [],
             "logits_val": [],
         }
-        for x in inputs[0:2]:
+        for x in inputs[0][0:2]:
             out = self.backbone(x)
             maps = out.layer4_out.flatten(start_dim=2, end_dim=4).permute(0,2,1)
             representation = out.layer_pool_out.view(-1, 512)
@@ -256,46 +273,34 @@ class VICRegL(pl.LightningModule):
                 layers = [out.layer1_out, out.layer2_out, out.layer3_out, out.layer4_out]
                 representation_dim = [64, 128, 256, 512]
 
+                pool = nn.AdaptiveAvgPool2d((1,1))
+
                 for index, layer in enumerate(layers):
 
                     split_tensors = torch.split(layer, 1, dim=2) #split the frames
-                    stacked_split_tensors = torch.stack(split_tensors, dim=0) #torch.Size([8, 2, 64, 1, 56, 56])
-                    flattened_tensors = stacked_split_tensors.flatten(start_dim=3, end_dim=5).permute(0,1,3,2) #torch.Size([8, 2, 3136, 64])
-                    num_frames, batch_size, num_loc, embedding_dim = flattened_tensors.shape #torch.Size([8, 2, 3136, 64])
-                    flattened_tensors_reshaped = flattened_tensors.view(-1, num_loc, embedding_dim) #torch.Size([16, 3136, 64])
+                    stacked_split_tensors = torch.stack(split_tensors, dim=0) #torch.Size([8, 6, 64, 1, 56, 56])
+                    pooled_stacked_split_tensors = pool(stacked_split_tensors) #torch.Size([8, 6, 64, 1, 1, 1])
+                    flattened_tensors = pooled_stacked_split_tensors.flatten(start_dim=3, end_dim=5).permute(0,1,3,2) #torch.Size([8, 6, 1, 64])
+                    num_frames, batch_size, num_loc, embedding_dim = flattened_tensors.shape #torch.Size([8, 6, 1, 64])
+                    flattened_tensors_reshaped = flattened_tensors.view(-1, embedding_dim) #torch.Size([48, 64])
 
-                    MAPS_MLP = f'{representation_dim[index]}-{representation_dim[index]}-{representation_dim[index]}'
+                    MAPS_MLP = f'{embedding_dim}-{embedding_dim}-{embedding_dim}'
                     maps_projector = model_utils.MLP(MAPS_MLP, representation_dim[index], norm_layer = "batch_norm").to(device)
-                    breakpoint()
-                    maps_embedding = maps_projector(flattened_tensors_reshaped)
-                    breakpoint()
-                    maps_embedding_reshaped = maps_embedding.view(batch_size, num_frames, num_loc, embedding_dim)
-                    outputs["maps_embedding"].append(maps_embedding_reshaped)
-                    breakpoint()
+                    maps_embedding = maps_projector(flattened_tensors_reshaped) #torch.Size([48, 64])
+                    maps_embedding = maps_embedding.view(num_frames, batch_size, num_loc, embedding_dim) #torch.Size([8, 6, 1, 64])
+                    outputs[f"layer_{index+1}"].append(maps_embedding)
+                
 
-
-                # for index, layer in enumerate(layers):
-                #     maps_projector = model_utils.MLP(self.cfg.MODEL.MAPS_MLP, representation_dim[index], norm_layer = "batch_norm").to(device)
-
-                #     split_tensors = torch.split(layer, 1, dim=2)
-                #     stacked_split_tensors = torch.stack(split_tensors, dim=0)
-                #     flattened_tensors = stacked_split_tensors.flatten(start_dim=3, end_dim=5).permute(0,1,3,2)
-
-                #     for frame in flattened_tensors:
-                #         batch_size, num_loc, _ = frame.shape #torch.Size([2, 49, 512])
-                #         maps_embedding = maps_projector(frame.flatten(start_dim=0, end_dim=1)) #torch.Size([98, 512])
-                #         maps_embedding = maps_embedding.view(batch_size, num_loc, -1) #torch.Size([2, 49, 512])
-                #         outputs["maps_embedding"].append(maps_embedding)
-                #         breakpoint()
-
+        # outputs["layer_1"] = [torch.Size([8, 6, 1, 64]), torch.Size([8, 6, 1, 64])]
+        # outputs["layer_2"] = [torch.Size([4, 6, 1, 128]), torch.Size([4, 6, 1, 128])]
+        # outputs["layer_3"] = [torch.Size([2, 6, 1, 256]), torch.Size([2, 6, 1, 256])]
+        # outputs["layer_4"] = [torch.Size([1, 6, 1, 512]), torch.Size([1, 6, 1, 512])]
 
             # if self.cfg.MODEL.ALPHA < 1.0:
-            #     batch_size, num_loc, _ = maps.shape #torch.Size([2, 49, 512])
+            #     batch_size, num_loc, _ = maps.shape #torch.Size([6, 49, 512])
             #     maps_embedding = self.maps_projector(maps.flatten(start_dim=0, end_dim=1)) #torch.Size([98, 512])
-            #     breakpoint()
-            #     maps_embedding = maps_embedding.view(batch_size, num_loc, -1) #torch.Size([2, 49, 512])
+            #     maps_embedding = maps_embedding.view(batch_size, num_loc, -1) #torch.Size([6, 49, 512])
             #     outputs["maps_embedding"].append(maps_embedding)
-            #     breakpoint()
 
         #     logits = self.classifier(representation.detach())
         #     outputs["logits"].append(logits)
@@ -312,7 +317,7 @@ class VICRegL(pl.LightningModule):
         #     maps, _ = self.backbone(inputs)
         #     return maps
 
-        outputs = self.forward_networks(inputs[0], is_val)
+        outputs = self.forward_networks(inputs, is_val)
         with torch.no_grad():
             self.compute_metrics(outputs, is_val)
         loss = 0.0
@@ -340,17 +345,17 @@ class VICRegL(pl.LightningModule):
         # Maps shape: B, C, H, W
         # With convnext actual maps shape is: B, H * W, C
         if self.cfg.MODEL.ALPHA < 1.0:
-            breakpoint()
-            (
-                maps_inv_loss,
-                maps_var_loss,
-                maps_cov_loss,
-            ) = self.local_loss(
-                outputs["maps_embedding"], inputs[1][0:2]
-            )
-            breakpoint()
-            # outputs["maps_embedding"] : [torch.Size([2, 49, 512]), torch.Size([2, 49, 512])]
-            # inputs[1][0:2]            : [torch.Size([2, 8, 1]), torch.Size([2, 8, 1])]
+            (maps_inv_loss_layer1, maps_var_loss_layer1, maps_cov_loss_layer1) = self.local_loss(outputs["layer_1"], inputs[1][0:2])
+            (maps_inv_loss_layer2, maps_var_loss_layer2, maps_cov_loss_layer2) = self.local_loss(outputs["layer_2"], inputs[1][0:2])
+            (maps_inv_loss_layer3, maps_var_loss_layer3, maps_cov_loss_layer3) = self.local_loss(outputs["layer_3"], inputs[1][0:2])
+            (maps_inv_loss_layer4, maps_var_loss_layer4, maps_cov_loss_layer4) = self.local_loss(outputs["layer_4"], inputs[1][0:2])
+
+            maps_inv_loss = maps_inv_loss_layer1 + maps_inv_loss_layer2 + maps_inv_loss_layer3 + maps_inv_loss_layer4
+            maps_var_loss = maps_var_loss_layer1 + maps_var_loss_layer2 + maps_var_loss_layer3 + maps_var_loss_layer4
+            maps_cov_loss = maps_cov_loss_layer1 + maps_cov_loss_layer2 + maps_cov_loss_layer3 + maps_cov_loss_layer4
+
+            # outputs["maps_embedding"] : [torch.Size([6, 49, 512]), torch.Size([6, 49, 512])]
+            # inputs[1][0:2]            : [torch.Size([6, 8, 1]), torch.Size([6, 8, 1])]
 
             loss = loss + (1 - self.cfg.MODEL.ALPHA) * (
                 maps_inv_loss + maps_var_loss + maps_cov_loss

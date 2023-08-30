@@ -1,5 +1,5 @@
 import sys
-sys.path.append('/home/sdastani/projects/rrg-ebrahimi/sdastani/SSL_video')
+sys.path.append('/home/as89480@ens.ad.etsmtl.ca/projects/SSL_video')
 
 import wandb
 import os
@@ -53,7 +53,7 @@ def run_pretraining(cfg: DictConfig) -> None:
                                 project=cfg.wandb.name, 
                                 offline = True)
     
-    trainer = pl.Trainer(devices=torch.cuda.device_count(), 
+    trainer = pl.Trainer(devices= 1, #torch.cuda.device_count(), 
                          strategy='ddp_find_unused_parameters_true',
                          max_epochs=cfg.common.epochs,
                          logger=wandb_logger,

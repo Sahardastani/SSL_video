@@ -19,7 +19,7 @@ initialization:
 
 common:
   device: "cuda"
-  batch_size: 2
+  batch_size: 6
   epochs: 1
   seed: 100
 

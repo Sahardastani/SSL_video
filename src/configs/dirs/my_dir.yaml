@@ -1,10 +1,10 @@
 name: my_dir
 
 # current directory that SSL_VIDEO is located
-current: /home/sdastani/projects/rrg-ebrahimi/sdastani/SSL_video
+current: /home/as89480@ens.ad.etsmtl.ca/projects/SSL_video
 
-model_path: /home/sdastani/projects/rrg-ebrahimi/sdastani/SSL_video/models
+model_path: /home/as89480@ens.ad.etsmtl.ca/projects/SSL_video/models
 
 # Dataset directory
-PATH_PREFIX: /home/sdastani/projects/rrg-ebrahimi/sdastani/SSL_video/k400
+PATH_PREFIX: /home/as89480@ens.ad.etsmtl.ca/projects/SSL_video/k400
 
