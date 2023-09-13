@@ -225,9 +225,9 @@ class Kinetics(torch.utils.data.Dataset):
                 continue
 
             # Decode video. Meta info is used to perform selective decoding.
-            frames = decode(
-                container=video_container,
-                sampling_rate=sampling_rate,
+            frames, indexes = decode(
+                container=video_container, #'/home/as89480@ens.ad.etsmtl.ca/projects/SSL_video/k400/train/5m7e9ZAVK04_000008_000018.mp4'
+                sampling_rate=sampling_rate, #32
                 num_frames=self.cfg.DATA.NUM_FRAMES,
                 clip_idx=temporal_sample_index,
                 num_clips=self.cfg.TEST.NUM_ENSEMBLE_VIEWS,
@@ -238,7 +238,6 @@ class Kinetics(torch.utils.data.Dataset):
                 temporal_aug=self.mode == "train" and not self.cfg.DATA.NO_RGB_AUG,
                 rand_fr=self.cfg.DATA.RAND_FR
             )
-
             # If decoding failed (wrong format, video is too short, and etc),
             # select another video.
             if frames is None:
@@ -292,7 +291,7 @@ class Kinetics(torch.utils.data.Dataset):
 
                 # Perform data augmentation.
                 augmentation = VideoDataAugmentationDINO()
-                frames, locations = augmentation(frames, from_list=True, no_aug=self.cfg.DATA.NO_SPATIAL)
+                frames = augmentation(frames, from_list=True, no_aug=self.cfg.DATA.NO_SPATIAL)
 
                 # T C H W -> C T H W.
                 frames = [rearrange(x, "t c h w -> c t h w") for x in frames]
@@ -307,9 +306,29 @@ class Kinetics(torch.utils.data.Dataset):
 
                     ).long(),
                 ) for x in frames]
+            
+            # padding g1 to have the same number of frames as g2
+            channel_0, frame_numbers_0, height_0, width_0 = frames[0].shape
+            channel_1, frame_numbers_1, height_1, width_1 = frames[1].shape
+
+            frames_to_add = frame_numbers_1 - frame_numbers_0
+
+            if frames_to_add > 0:
+                padding = torch.zeros(channel_0, frames_to_add, height_0, width_0)
+                frames[0] = torch.cat((frames[0], padding), dim=1)
+
+            # # padding g1 indexes to have the same dimension as g2 indexes
+            # num_zeros = len(indexes[1]) - len(indexes[0])
+
+            # if num_zeros > 0:
+            #     padding = torch.zeros(num_zeros, dtype=indexes[0].dtype)
+            #     result = torch.empty(len(indexes[1]), dtype=indexes[0].dtype)
+            #     result[::2] = indexes[0]
+            #     result[1::2] = padding
+            #     indexes[0] = result
 
             meta_data = {}
-            return frames, locations, label, index, meta_data
+            return frames, indexes, label, index, meta_data
 
         else:
             raise RuntimeError(

@@ -32,7 +32,7 @@ class DataConfig:
     NO_RGB_AUG: bool = False
     RAND_CONV: bool = False
     NO_SPATIAL: bool = False
-    RAND_FR: bool = False
+    RAND_FR: bool = True
     TEMPORAL_EXTENT: int = 8
     DEIT_TRANSFORMS: bool = False
     COLOR_JITTER: float = 0.
