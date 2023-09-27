@@ -288,57 +288,33 @@ class VICRegL(pl.LightningModule):
             "logits_val": [],
         }
         
-        # kernel size, stride and padding information from three layers of ResNet2D+1
-        conv_info = {}
-        for layer_num, layer in enumerate([self.backbone.backbone.layer2, self.backbone.backbone.layer3, self.backbone.backbone.layer4]):
-            for block_num, block in enumerate(layer):
-                for conv_num, conv1 in enumerate(block.conv1[0]):
-                    if isinstance(conv1, nn.Conv3d):
-                        kernel_size = conv1.kernel_size
-                        stride = conv1.stride
-                        padding = conv1.padding
-                        conv_info[f'layer{layer_num+2}_block{block_num}_conv1_{conv_num}'] = ((kernel_size[0], stride[0], padding[0]))
-                for conv_num, conv2 in enumerate(block.conv2[0]):
-                    if isinstance(conv2, nn.Conv3d):
-                        kernel_size = conv2.kernel_size
-                        stride = conv2.stride
-                        padding = conv2.padding
-                        conv_info[f'layer{layer_num+2}_block{block_num}_conv2_{conv_num}'] = ((kernel_size[0], stride[0], padding[0]))
-
-        # make g1 index equal to g2 index ( 4 --> 8) by adding the last value at the end of indexes
-        # g1 indexes are 4 in length. We need to make them 8 (equal to the length of g2) 
-        # because we want to feed them to resnet and have 8, 4, 2, 1 frames after layer 1, 2, 3, 4 respectively
-        # if we feed the original 4 frames of g1, then we do not have the equal number of frames after each layer
-        new_inputs1 = []
-        for index, each_batch in enumerate(inputs[1][0]):
-            while len(each_batch) < len(inputs[1][1][0]):
-                each_batch = torch.cat((each_batch, torch.tensor([each_batch[-1].item()]).to("cuda")))
-            new_inputs1.append(each_batch)
-        inputs[1][0] = torch.stack(new_inputs1)
-
         # finding out the index of frames in the original video after each layer in resnet
+        conv_info = self.backbone.extract_conv_info()
         for x in inputs[1][0:2]:
             current_input = x
             outputs["index_layer1"].append(x)
-            for layer_name, (kernel_size, stride, padding) in conv_info.items():
-                kernel = torch.ones(1, 1, kernel_size).to("cuda")
+            for layer, info in conv_info.items():
+                for iter, (kernel_size, stride, padding) in enumerate(info):
+                    kernel = torch.ones(1, 1, kernel_size).to("cuda")
 
-                output_tensors = []
-                for row in current_input:
-                    row = row.view(1, 1, -1)
-                    padded_row = torch.cat([row[:, :, 0:1].repeat(1, 1, padding), row, row[:, :, -1:].repeat(1, 1, padding)], dim=2).to(dtype=kernel.dtype)
-                    output_row = F.conv1d(padded_row, kernel, stride=stride)
-                    output_row = output_row.view(-1) / kernel_size
-                    output_tensors.append(torch.floor(output_row))
+                    output_tensors = []
+                    for row in current_input:
+                        row = row.view(1, 1, -1)
+                        padded_row = torch.cat([row[:, :, 0:1].repeat(1, 1, padding), row, row[:, :, -1:].repeat(1, 1, padding)], dim=2).to(dtype=kernel.dtype)
+                        output_row = F.conv1d(padded_row, kernel, stride=stride)
+                        output_row = output_row.view(-1) / kernel_size
+                        output_tensors.append(torch.floor(output_row))
 
-                current_input = torch.stack(output_tensors)
+                    current_input = torch.stack(output_tensors)
+                    
+                    if layer == 'layer2' and iter == len(conv_info['layer2'])-1:
+                        outputs["index_layer2"].append(current_input)
 
-                if layer_name == "layer2_block1_conv2_3":
-                    outputs["index_layer2"].append(current_input)
-                elif layer_name == "layer3_block1_conv2_3":
-                    outputs["index_layer3"].append(current_input)
-                elif layer_name == "layer4_block1_conv2_3":
-                    outputs["index_layer4"].append(current_input)
+                    if layer == 'layer3' and iter == len(conv_info['layer3'])-1:
+                        outputs["index_layer3"].append(current_input)
+
+                    if layer == 'layer4' and iter == len(conv_info['layer4'])-1:
+                        outputs["index_layer4"].append(current_input)
 
         for x in inputs[0][0:2]:
             out = self.backbone(x)
@@ -400,18 +376,11 @@ class VICRegL(pl.LightningModule):
                 # log.update(dict(train_inv_l=inv_loss, train_var_l=var_loss, train_cov_l=cov_loss, train_loss=loss))
             
         # Local criterion
-        # Maps shape: B, C, H, W
-        # With convnext actual maps shape is: B, H * W, C
         if self.cfg.MODEL.ALPHA < 1.0:
             (maps_inv_loss_layer1, maps_var_loss_layer1, maps_cov_loss_layer1) = self.local_loss(outputs["layer_1"], outputs["frames_order_layer1"], outputs["index_layer1"]) 
             (maps_inv_loss_layer2, maps_var_loss_layer2, maps_cov_loss_layer2) = self.local_loss(outputs["layer_2"], outputs["frames_order_layer2"], outputs["index_layer2"]) 
             (maps_inv_loss_layer3, maps_var_loss_layer3, maps_cov_loss_layer3) = self.local_loss(outputs["layer_3"], outputs["frames_order_layer3"], outputs["index_layer3"])
             (maps_inv_loss_layer4, maps_var_loss_layer4, maps_cov_loss_layer4) = self.local_loss(outputs["layer_4"], outputs["frames_order_layer4"], outputs["index_layer4"])
-
-                                                                                                # [8, 6, 1, 64]) |          [6, 8, 1] |                     [6, 8]
-                                                                                                # [4, 6, 1, 128] |          [6, 4, 1] |                     [6, 4]
-                                                                                                # [2, 6, 1, 256] |          [6, 2, 1] |                     [6, 2]
-                                                                                                # [1, 6, 1, 512] |          [6, 1, 1] |                     [6, 1]
 
             maps_inv_loss = maps_inv_loss_layer1 + maps_inv_loss_layer2 + maps_inv_loss_layer3 + maps_inv_loss_layer4
             maps_var_loss = maps_var_loss_layer1 + maps_var_loss_layer2 + maps_var_loss_layer3 + maps_var_loss_layer4
@@ -430,11 +399,6 @@ class VICRegL(pl.LightningModule):
         x = train_batch
         loss = self.forward(x)
         return loss
-    
-    # def validation_step(self, val_batch, batch_idx):
-    #     x = val_batch
-    #     loss = self.forward(x[0])
-    #     return loss
     
     def configure_optimizers(self):
         if self.cfg.MODEL.OPTIMIZER == "adamw":

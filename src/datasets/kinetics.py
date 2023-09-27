@@ -226,8 +226,8 @@ class Kinetics(torch.utils.data.Dataset):
 
             # Decode video. Meta info is used to perform selective decoding.
             frames, indexes = decode(
-                container=video_container, #'/home/as89480@ens.ad.etsmtl.ca/projects/SSL_video/k400/train/5m7e9ZAVK04_000008_000018.mp4'
-                sampling_rate=sampling_rate, #32
+                container=video_container, 
+                sampling_rate=sampling_rate, 
                 num_frames=self.cfg.DATA.NUM_FRAMES,
                 clip_idx=temporal_sample_index,
                 num_clips=self.cfg.TEST.NUM_ENSEMBLE_VIEWS,
@@ -236,8 +236,9 @@ class Kinetics(torch.utils.data.Dataset):
                 backend=self.cfg.DATA.DECODING_BACKEND,
                 max_spatial_scale=min_scale,
                 temporal_aug=self.mode == "train" and not self.cfg.DATA.NO_RGB_AUG,
-                rand_fr=self.cfg.DATA.RAND_FR
+                rand_fr=self.cfg.DATA.RAND_FR #True
             )
+            # breakpoint()
             # If decoding failed (wrong format, video is too short, and etc),
             # select another video.
             if frames is None:
@@ -316,16 +317,10 @@ class Kinetics(torch.utils.data.Dataset):
             if frames_to_add > 0:
                 padding = torch.zeros(channel_0, frames_to_add, height_0, width_0)
                 frames[0] = torch.cat((frames[0], padding), dim=1)
-
-            # # padding g1 indexes to have the same dimension as g2 indexes
-            # num_zeros = len(indexes[1]) - len(indexes[0])
-
-            # if num_zeros > 0:
-            #     padding = torch.zeros(num_zeros, dtype=indexes[0].dtype)
-            #     result = torch.empty(len(indexes[1]), dtype=indexes[0].dtype)
-            #     result[::2] = indexes[0]
-            #     result[1::2] = padding
-            #     indexes[0] = result
+            
+            # make g1 index equal to g2 index ( 4 --> 8) by adding the last value at the end of indexes
+            desired_length = indexes[1].size(0)
+            indexes[0] = torch.cat((indexes[0], torch.tensor([indexes[0][-1]] * (desired_length - len(indexes[0])))), dim=0)
 
             meta_data = {}
             return frames, indexes, label, index, meta_data
@@ -343,9 +338,4 @@ class Kinetics(torch.utils.data.Dataset):
             (int): the number of videos in the dataset.
         """
         return len(self._path_to_videos)
-    
-# def make_inputs(inputs, gpu):
-    
-#     inputs = [clip.cuda(gpu, non_blocking=True) for clip in inputs]
-    
-#     return inputs
+
