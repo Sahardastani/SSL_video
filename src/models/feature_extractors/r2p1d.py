@@ -103,3 +103,4 @@ class OurVideoResNet(torch.nn.Module):
 # model = OurVideoResNet()
 # conv_info = model.extract_conv_info()
 # print(conv_info)
+# breakpoint()

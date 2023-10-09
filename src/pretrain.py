@@ -45,7 +45,7 @@ def run_pretraining(cfg: DictConfig) -> None:
     utils.set_seed(cfg.common.seed)
 
     dataset = Kinetics(cfg=config, mode="train", num_retries=10, get_flow=False)
-    train_loader = torch.utils.data.DataLoader(dataset=dataset, batch_size=cfg.common.batch_size, drop_last=True, num_workers=cfg.common.num_workers)
+    train_loader = torch.utils.data.DataLoader(dataset=dataset, batch_size=cfg.common.batch_size, drop_last=True)#, num_workers=cfg.common.num_workers)
 
     model = VICRegL(cfg=config)
     model.apply(initialize_weights)

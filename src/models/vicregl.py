@@ -5,6 +5,7 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
+import time
 import numpy as np
 import torch
 from torch import nn
@@ -63,24 +64,25 @@ class VICRegL(pl.LightningModule):
         cov_loss = (cov_x[..., non_diag_mask].pow(2).sum(-1) / num_channels) / 2 + (
                 cov_y[..., non_diag_mask].pow(2).sum(-1) / num_channels
         ) / 2
-        cov_loss = cov_loss.mean()
+        cov_loss = cov_loss.mean() 
         cov_loss = self.cfg.MODEL.COV_COEFF * cov_loss
 
         return repr_loss, std_loss, cov_loss
 
     def _local_loss(
-            self, maps_1, maps_2, location_1, location_2, index_location_1, index_location_2, org_maps_1, org_maps_2
+            self, maps_1, maps_2, index_location_1, index_location_2, org_maps_1, org_maps_2
     ):
         inv_loss = 0.0
         var_loss = 0.0
         cov_loss = 0.0
 
-        # L2 distance based bacthing
+        # L2 distance based macthing
+        start_l2 = time.time()
         if self.cfg.MODEL.L2_ALL_MATCHES:
             num_matches_on_l2 = [None, None]
         else:
             num_matches_on_l2 = self.cfg.MODEL.NUM_MATCHES
-
+        
         maps_1_filtered, maps_1_nn = neirest_neighbores_on_l2(
             maps_1, maps_2, num_matches=num_matches_on_l2[0]
         )
@@ -98,60 +100,34 @@ class VICRegL(pl.LightningModule):
             cov_loss = cov_loss + (cov_loss_1 / 2 + cov_loss_2 / 2)
 
         inv_loss = inv_loss + (inv_loss_1 / 2 + inv_loss_2 / 2)
+        end_l2 = time.time()
+        l2_time = end_l2 - start_l2
 
-        # # Location based matching
+        # Location based matching
+        start_loc = time.time()
         inv = []
         var = []
         cov = []
+        
+        distances = torch.cdist(index_location_2.unsqueeze(-1).float(), index_location_1.unsqueeze(-1).float(), p=1)
+        current_index_list2 = torch.min(distances, dim=-1)[1]
+        I = torch.arange(index_location_2.shape[0], ).long().unsqueeze(-1).repeat(1, index_location_2.size(-1))
+        map1_transform = org_maps_1.permute(1, 0, 2, 3)[I, current_index_list2].permute(1, 0, 2, 3)
 
-        for j in range(index_location_1.shape[0]): # batches
-            indexes1= []
-            for value in index_location_2[j]:
-                closest_index = min(range(len(index_location_1[j])), key=lambda i: abs(index_location_1[j][i] - value))
-                indexes1.append(closest_index)
-            
-            current_index_list = indexes1
-            map1_transform = org_maps_1[current_index_list]
+        distances = torch.cdist(index_location_1.unsqueeze(-1).float(), index_location_2.unsqueeze(-1).float(), p=1)
+        current_index_list1 = torch.min(distances, dim=-1)[1]
+        map2_transform = org_maps_2.permute(1, 0, 2, 3)[I, current_index_list1].permute(1, 0, 2, 3)
 
-            indexes2= []
-            for value in index_location_1[j]:
-                closest_index = min(range(len(index_location_2[j])), key=lambda i: abs(index_location_2[j][i] - value))
-                indexes2.append(closest_index)
+        inv_loss_1, var_loss_1, cov_loss_1 = self._vicreg_loss(map1_transform.reshape(-1, 1, map1_transform.shape[-1]), org_maps_2.reshape(-1, 1, org_maps_2.shape[-1]))
+        inv_loss_2, var_loss_2, cov_loss_2 = self._vicreg_loss(map2_transform.reshape(-1, 1, map2_transform.shape[-1]), org_maps_1.reshape(-1, 1, org_maps_1.shape[-1]))
+        inv_loss = inv_loss + (inv_loss_1 / 2 + inv_loss_2 / 2)
+        var_loss = var_loss + (var_loss_1 / 2 + var_loss_2 / 2)
+        cov_loss = cov_loss + (cov_loss_1 / 2 + cov_loss_2 / 2)
 
-            current_index_list = indexes2
-            map2_transform = org_maps_2[current_index_list]
+        end_loc = time.time()
+        loc_time = end_loc - start_loc
 
-            if self.cfg.MODEL.FAST_VC_REG:
-                inv_loss_1 = F.mse_loss(map1_transform, org_maps_2)
-                inv_loss_2 = F.mse_loss(map2_transform, org_maps_1)
-                inv_loss = inv_loss + (inv_loss_1 / 2 + inv_loss_2 / 2)
-            else:
-                inv_frame = []
-                var_frame = []
-                cov_frame = []
-                for frame in range(map1_transform.shape[0]):
-                    inv_loss_1, var_loss_1, cov_loss_1 = self._vicreg_loss(map1_transform[frame], org_maps_2[frame])
-                    inv_loss_2, var_loss_2, cov_loss_2 = self._vicreg_loss(map2_transform[frame], org_maps_1[frame])
-                    inv_loss = inv_loss + (inv_loss_1 / 2 + inv_loss_2 / 2)
-                    var_loss = var_loss + (var_loss_1 / 2 + var_loss_2 / 2)
-                    cov_loss = cov_loss + (cov_loss_1 / 2 + cov_loss_2 / 2)
-                    
-                    inv_frame.append(inv_loss)
-                    var_frame.append(var_loss)
-                    cov_frame.append(cov_loss)
-
-                inv_loss = sum(inv_frame)
-                var_loss = sum(var_frame)
-                cov_loss = sum(cov_frame)
-
-            inv.append(inv_loss)
-            var.append(var_loss)
-            cov.append(cov_loss)
-
-        inv_loss = sum(inv)
-        var_loss = sum(var)
-        cov_loss = sum(cov)
-
+        print('l2', l2_time, 'loc:', loc_time)
         return inv_loss, var_loss, cov_loss
 
     def local_loss(self, maps_embedding, locations, index_locations): 
@@ -160,22 +136,39 @@ class VICRegL(pl.LightningModule):
             "var_loss": [],
             "cov_loss": []
         }
+
         for k in range(maps_embedding[0].shape[0]):
             each_frame_maps_embedding = [maps_embedding[0][k], maps_embedding[1][k]]
+            # breakpoint()
             num_views = len(maps_embedding)
             inv_loss = 0.0
             var_loss = 0.0
             cov_loss = 0.0
             iter_ = 0
-            for i in range(2):
-                for j in np.delete(np.arange(np.sum(num_views)), i):
-                    inv_loss_this, var_loss_this, cov_loss_this = self._local_loss(
-                        each_frame_maps_embedding[i], each_frame_maps_embedding[j], locations[i], locations[j], index_locations[i], index_locations[j], maps_embedding[0], maps_embedding[1]
-                    )
-                    inv_loss = inv_loss + inv_loss_this
-                    var_loss = var_loss + var_loss_this
-                    cov_loss = cov_loss + cov_loss_this
-                    iter_ += 1
+            # for i in range(2):
+            #     for j in np.delete(np.arange(np.sum(num_views)), i):
+
+            each_frame_maps_embedding_1 = torch.cat([each_frame_maps_embedding[0],  each_frame_maps_embedding[1]], 0)
+            each_frame_maps_embedding_2 = torch.cat([each_frame_maps_embedding[1],  each_frame_maps_embedding[0]], 0)
+
+            index_locations_1 = torch.cat([index_locations[0], index_locations[1]], 0)
+            index_locations_2 = torch.cat([index_locations[1], index_locations[0]], 0)
+
+            maps_embedding_1 = torch.cat([maps_embedding[0], maps_embedding[1]], 1)
+            maps_embedding_2 = torch.cat([maps_embedding[1], maps_embedding[0]], 1)
+
+            # inv_loss_this, var_loss_this, cov_loss_this = self._local_loss(
+            #     each_frame_maps_embedding[i], each_frame_maps_embedding[j], locations[i], locations[j], index_locations[i], index_locations[j], maps_embedding[0], maps_embedding[1]
+            # )
+
+            inv_loss_this, var_loss_this, cov_loss_this = self._local_loss(
+                each_frame_maps_embedding_1, each_frame_maps_embedding_2, index_locations_1, index_locations_2, maps_embedding_1, maps_embedding_2
+            )
+
+            inv_loss = inv_loss + inv_loss_this
+            var_loss = var_loss + var_loss_this
+            cov_loss = cov_loss + cov_loss_this
+            iter_ += 1
 
             if self.cfg.MODEL.FAST_VC_REG:
                 inv_loss = self.cfg.MODEL.INV_COEFF * inv_loss / iter_
@@ -289,6 +282,7 @@ class VICRegL(pl.LightningModule):
         }
         
         # finding out the index of frames in the original video after each layer in resnet
+        start_first = time.time()
         conv_info = self.backbone.extract_conv_info()
         for x in inputs[1][0:2]:
             current_input = x
@@ -296,17 +290,13 @@ class VICRegL(pl.LightningModule):
             for layer, info in conv_info.items():
                 for iter, (kernel_size, stride, padding) in enumerate(info):
                     kernel = torch.ones(1, 1, kernel_size).to("cuda")
-
-                    output_tensors = []
-                    for row in current_input:
-                        row = row.view(1, 1, -1)
-                        padded_row = torch.cat([row[:, :, 0:1].repeat(1, 1, padding), row, row[:, :, -1:].repeat(1, 1, padding)], dim=2).to(dtype=kernel.dtype)
-                        output_row = F.conv1d(padded_row, kernel, stride=stride)
-                        output_row = output_row.view(-1) / kernel_size
-                        output_tensors.append(torch.floor(output_row))
-
-                    current_input = torch.stack(output_tensors)
                     
+                    row = current_input.view(6, 1, -1)
+                    padded_row = torch.cat([row[:, :, 0:1].repeat(1, 1, padding), row, row[:, :, -1:].repeat(1, 1, padding)], dim=2).to(dtype=kernel.dtype)
+                    output_row = F.conv1d(padded_row, kernel, stride=stride)
+                    output_row = output_row / kernel_size
+                    current_input = output_row.squeeze(1)
+
                     if layer == 'layer2' and iter == len(conv_info['layer2'])-1:
                         outputs["index_layer2"].append(current_input)
 
@@ -315,7 +305,10 @@ class VICRegL(pl.LightningModule):
 
                     if layer == 'layer4' and iter == len(conv_info['layer4'])-1:
                         outputs["index_layer4"].append(current_input)
+        end_first = time.time()
+        first_time = end_first - start_first
 
+        start_second = time.time()
         for x in inputs[0][0:2]:
             out = self.backbone(x)
             layers = [out.layer1_out, out.layer2_out, out.layer3_out, out.layer4_out]
@@ -347,7 +340,10 @@ class VICRegL(pl.LightningModule):
 
                     # order of frames in each layer
                     outputs[f"frames_order_layer{index+1}"].append(torch.arange(num_frames).unsqueeze(1).unsqueeze(0).expand(batch_size, -1, -1))
+        end_second = time.time()
+        second_time = end_second - start_second
 
+        print('first', first_time, 'second', second_time)
         return outputs
 
     def forward(self, inputs, is_val=False, backbone_only=False):
@@ -357,6 +353,7 @@ class VICRegL(pl.LightningModule):
         loss = 0.0
 
         # Global criterion
+        start_global = time.time()
         if self.cfg.MODEL.ALPHA > 0.0:
             inv_loss, var_loss, cov_loss = self.global_loss(
                 outputs["embedding"]
@@ -374,13 +371,15 @@ class VICRegL(pl.LightningModule):
                 self.log('train_cov_l', cov_loss)
                 self.log('train_loss', loss)
                 # log.update(dict(train_inv_l=inv_loss, train_var_l=var_loss, train_cov_l=cov_loss, train_loss=loss))
-            
+        end_global = time.time()
+        global_time = end_global - start_global
         # Local criterion
+        start_local = time.time()
         if self.cfg.MODEL.ALPHA < 1.0:
             (maps_inv_loss_layer1, maps_var_loss_layer1, maps_cov_loss_layer1) = self.local_loss(outputs["layer_1"], outputs["frames_order_layer1"], outputs["index_layer1"]) 
             (maps_inv_loss_layer2, maps_var_loss_layer2, maps_cov_loss_layer2) = self.local_loss(outputs["layer_2"], outputs["frames_order_layer2"], outputs["index_layer2"]) 
             (maps_inv_loss_layer3, maps_var_loss_layer3, maps_cov_loss_layer3) = self.local_loss(outputs["layer_3"], outputs["frames_order_layer3"], outputs["index_layer3"])
-            (maps_inv_loss_layer4, maps_var_loss_layer4, maps_cov_loss_layer4) = self.local_loss(outputs["layer_4"], outputs["frames_order_layer4"], outputs["index_layer4"])
+            (maps_inv_loss_layer4, maps_var_loss_layer4, maps_cov_loss_layer4) = (0,0,0)#self.local_loss(outputs["layer_4"], outputs["frames_order_layer4"], outputs["index_layer4"])
 
             maps_inv_loss = maps_inv_loss_layer1 + maps_inv_loss_layer2 + maps_inv_loss_layer3 + maps_inv_loss_layer4
             maps_var_loss = maps_var_loss_layer1 + maps_var_loss_layer2 + maps_var_loss_layer3 + maps_var_loss_layer4
@@ -392,7 +391,9 @@ class VICRegL(pl.LightningModule):
             self.log('minv_l', maps_inv_loss)
             self.log('mvar_l', maps_var_loss)
             self.log('mcov_l', maps_cov_loss)
-
+        end_local = time.time()
+        local_time = end_local - start_local
+        print('global:', global_time, 'local', local_time)
         return loss
     
     def training_step(self, train_batch, batch_idx):
