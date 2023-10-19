@@ -2,6 +2,7 @@
 import os
 import random
 import warnings
+import numpy as np
 
 import hydra
 import torch
@@ -10,7 +11,9 @@ from PIL import Image
 from einops import rearrange
 from matplotlib import pyplot as plt
 from omegaconf import DictConfig
+from logging import getLogger as get_logger
 
+from src.models.feature_extractors.r2p1d import OurVideoResNet
 from src.utils.data_utils import get_random_sampling_rate, tensor_normalize, spatial_sampling, pack_pathway_output
 from src.datasets.decoder import decode
 from src.datasets.transform import VideoDataAugmentationDINO
@@ -18,7 +21,7 @@ from src.datasets.video_container import get_video_container
 from src import configs_dir
 from src.datasets.transform import undo_normalize
 from src.utils.defaults import build_config
-
+logger = get_logger(__name__)
 
 class Kinetics(torch.utils.data.Dataset):
     """
@@ -77,6 +80,9 @@ class Kinetics(torch.utils.data.Dataset):
 
         print("Constructing Kinetics {}...".format(mode))
         self._construct_loader()
+        self._path_to_videos = np.asarray(self._path_to_videos)
+        self._labels = np.asarray(self._labels)
+        self._spatial_temporal_idx = np.asarray(self._spatial_temporal_idx)
 
     def _construct_loader(self):
         """
@@ -207,7 +213,7 @@ class Kinetics(torch.utils.data.Dataset):
                     self.cfg.DATA.DECODING_BACKEND,
                 )
             except Exception as e:
-                print(
+                logger.debug(
                     "Failed to load video from {} with error {}".format(
                         self._path_to_videos[index], e
                     )
@@ -238,7 +244,7 @@ class Kinetics(torch.utils.data.Dataset):
                 temporal_aug=self.mode == "train" and not self.cfg.DATA.NO_RGB_AUG,
                 rand_fr=self.cfg.DATA.RAND_FR #True
             )
-            # breakpoint()
+            
             # If decoding failed (wrong format, video is too short, and etc),
             # select another video.
             if frames is None:
@@ -323,6 +329,7 @@ class Kinetics(torch.utils.data.Dataset):
             indexes[0] = torch.cat((indexes[0], torch.tensor([indexes[0][-1]] * (desired_length - len(indexes[0])))), dim=0)
 
             meta_data = {}
+
             return frames, indexes, label, index, meta_data
 
         else:
@@ -338,4 +345,3 @@ class Kinetics(torch.utils.data.Dataset):
             (int): the number of videos in the dataset.
         """
         return len(self._path_to_videos)
-

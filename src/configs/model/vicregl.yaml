@@ -1,7 +1,7 @@
 name: vicregl
 
 # Test config
-BATCH_SIZE: 5
+BATCH_SIZE: 6
 
 # Model config
 EXP_DIR: "experiments"

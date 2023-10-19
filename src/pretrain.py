@@ -1,5 +1,5 @@
 import sys
-sys.path.append('/home/as89480@ens.ad.etsmtl.ca/projects/SSL_video')
+sys.path.append('/home/as89480@ens.ad.etsmtl.ca/SSL_video')
 
 import wandb
 import os
@@ -43,9 +43,17 @@ def run_pretraining(cfg: DictConfig) -> None:
     # )
 
     utils.set_seed(cfg.common.seed)
-
+    
     dataset = Kinetics(cfg=config, mode="train", num_retries=10, get_flow=False)
-    train_loader = torch.utils.data.DataLoader(dataset=dataset, batch_size=cfg.common.batch_size, drop_last=True)#, num_workers=cfg.common.num_workers)
+    train_loader = torch.utils.data.DataLoader(dataset=dataset, 
+                                                batch_size=cfg.common.batch_size, 
+                                                drop_last=True, 
+                                                num_workers=cfg.common.num_workers,
+                                                pin_memory=True)
+    # import tqdm
+    # for _ in tqdm.tqdm(train_loader):
+    #     ...
+    # return
 
     model = VICRegL(cfg=config)
     model.apply(initialize_weights)
@@ -53,7 +61,7 @@ def run_pretraining(cfg: DictConfig) -> None:
                                 project=cfg.wandb.name, 
                                 offline = True)
     
-    trainer = pl.Trainer(devices= 1, #torch.cuda.device_count(), 
+    trainer = pl.Trainer(devices= 2, #torch.cuda.device_count(), 
                          strategy='ddp_find_unused_parameters_true',
                          max_epochs=cfg.common.epochs,
                          logger=wandb_logger,
@@ -66,6 +74,7 @@ def run_pretraining(cfg: DictConfig) -> None:
     torch.save(model.backbone.state_dict(), os.path.join(cfg['dirs']['model_path'],'final_global.pth'))
 
     wandb.finish()
+
 
 if __name__ == "__main__":
     run_pretraining()

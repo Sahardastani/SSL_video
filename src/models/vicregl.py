@@ -105,11 +105,12 @@ class VICRegL(pl.LightningModule):
 
         # Location based matching
         start_loc = time.time()
-        inv = []
-        var = []
-        cov = []
         
+        start_cdist = time.time()
         distances = torch.cdist(index_location_2.unsqueeze(-1).float(), index_location_1.unsqueeze(-1).float(), p=1)
+        end_cdist = time.time()
+        cdist_time = end_cdist-start_cdist
+        print('cdist:', cdist_time)
         current_index_list2 = torch.min(distances, dim=-1)[1]
         I = torch.arange(index_location_2.shape[0], ).long().unsqueeze(-1).repeat(1, index_location_2.size(-1))
         map1_transform = org_maps_1.permute(1, 0, 2, 3)[I, current_index_list2].permute(1, 0, 2, 3)
@@ -145,8 +146,6 @@ class VICRegL(pl.LightningModule):
             var_loss = 0.0
             cov_loss = 0.0
             iter_ = 0
-            # for i in range(2):
-            #     for j in np.delete(np.arange(np.sum(num_views)), i):
 
             each_frame_maps_embedding_1 = torch.cat([each_frame_maps_embedding[0],  each_frame_maps_embedding[1]], 0)
             each_frame_maps_embedding_2 = torch.cat([each_frame_maps_embedding[1],  each_frame_maps_embedding[0]], 0)
@@ -156,10 +155,6 @@ class VICRegL(pl.LightningModule):
 
             maps_embedding_1 = torch.cat([maps_embedding[0], maps_embedding[1]], 1)
             maps_embedding_2 = torch.cat([maps_embedding[1], maps_embedding[0]], 1)
-
-            # inv_loss_this, var_loss_this, cov_loss_this = self._local_loss(
-            #     each_frame_maps_embedding[i], each_frame_maps_embedding[j], locations[i], locations[j], index_locations[i], index_locations[j], maps_embedding[0], maps_embedding[1]
-            # )
 
             inv_loss_this, var_loss_this, cov_loss_this = self._local_loss(
                 each_frame_maps_embedding_1, each_frame_maps_embedding_2, index_locations_1, index_locations_2, maps_embedding_1, maps_embedding_2
@@ -226,25 +221,27 @@ class VICRegL(pl.LightningModule):
         cov_loss = self.cfg.MODEL.COV_COEFF * cov_loss / iter_
 
         return inv_loss, var_loss, cov_loss
-
+    
+    @staticmethod
+    def correlation_metric(x):
+        x_centered = (x - x.mean(dim=0)) / (x.std(dim=0) + 1e-05)
+        return torch.mean(
+            model_utils.off_diagonal((x_centered.T @ x_centered) / (x.size(0) - 1))
+        )
+    
     def compute_metrics(self, outputs, is_val= False):
-        def correlation_metric(x):
-            x_centered = (x - x.mean(dim=0)) / (x.std(dim=0) + 1e-05)
-            return torch.mean(
-                model_utils.off_diagonal((x_centered.T @ x_centered) / (x.size(0) - 1))
-            )
 
         def std_metric(x):
             x = F.normalize(x, p=2, dim=1)
             return torch.mean(x.std(dim=0))
 
         representation = model_utils.batch_all_gather(outputs["representation"][0])
-        corr = correlation_metric(representation)
+        corr = self.correlation_metric(representation)
         stdrepr = std_metric(representation)
 
         if self.cfg.MODEL.ALPHA > 0.0:
             embedding = model_utils.batch_all_gather(outputs["embedding"][0])
-            core = correlation_metric(embedding)
+            core = self.correlation_metric(embedding)
             stdemb = std_metric(embedding)
             if is_val:
                 self.log('eval_stdr', stdrepr)
@@ -284,14 +281,14 @@ class VICRegL(pl.LightningModule):
         # finding out the index of frames in the original video after each layer in resnet
         start_first = time.time()
         conv_info = self.backbone.extract_conv_info()
-        for x in inputs[1][0:2]:
+        for x in inputs[1]:
             current_input = x
             outputs["index_layer1"].append(x)
             for layer, info in conv_info.items():
                 for iter, (kernel_size, stride, padding) in enumerate(info):
                     kernel = torch.ones(1, 1, kernel_size).to("cuda")
                     
-                    row = current_input.view(6, 1, -1)
+                    row = current_input.view(8, 1, -1)
                     padded_row = torch.cat([row[:, :, 0:1].repeat(1, 1, padding), row, row[:, :, -1:].repeat(1, 1, padding)], dim=2).to(dtype=kernel.dtype)
                     output_row = F.conv1d(padded_row, kernel, stride=stride)
                     output_row = output_row / kernel_size
@@ -303,8 +300,8 @@ class VICRegL(pl.LightningModule):
                     if layer == 'layer3' and iter == len(conv_info['layer3'])-1:
                         outputs["index_layer3"].append(current_input)
 
-                    if layer == 'layer4' and iter == len(conv_info['layer4'])-1:
-                        outputs["index_layer4"].append(current_input)
+                    # if layer == 'layer4' and iter == len(conv_info['layer4'])-1:
+                    #     outputs["index_layer4"].append(current_input)
         end_first = time.time()
         first_time = end_first - start_first
 
@@ -379,11 +376,11 @@ class VICRegL(pl.LightningModule):
             (maps_inv_loss_layer1, maps_var_loss_layer1, maps_cov_loss_layer1) = self.local_loss(outputs["layer_1"], outputs["frames_order_layer1"], outputs["index_layer1"]) 
             (maps_inv_loss_layer2, maps_var_loss_layer2, maps_cov_loss_layer2) = self.local_loss(outputs["layer_2"], outputs["frames_order_layer2"], outputs["index_layer2"]) 
             (maps_inv_loss_layer3, maps_var_loss_layer3, maps_cov_loss_layer3) = self.local_loss(outputs["layer_3"], outputs["frames_order_layer3"], outputs["index_layer3"])
-            (maps_inv_loss_layer4, maps_var_loss_layer4, maps_cov_loss_layer4) = (0,0,0)#self.local_loss(outputs["layer_4"], outputs["frames_order_layer4"], outputs["index_layer4"])
+            # (maps_inv_loss_layer4, maps_var_loss_layer4, maps_cov_loss_layer4) = (0,0,0)#self.local_loss(outputs["layer_4"], outputs["frames_order_layer4"], outputs["index_layer4"])
 
-            maps_inv_loss = maps_inv_loss_layer1 + maps_inv_loss_layer2 + maps_inv_loss_layer3 + maps_inv_loss_layer4
-            maps_var_loss = maps_var_loss_layer1 + maps_var_loss_layer2 + maps_var_loss_layer3 + maps_var_loss_layer4
-            maps_cov_loss = maps_cov_loss_layer1 + maps_cov_loss_layer2 + maps_cov_loss_layer3 + maps_cov_loss_layer4
+            maps_inv_loss = maps_inv_loss_layer1 + maps_inv_loss_layer2 + maps_inv_loss_layer3# + maps_inv_loss_layer4
+            maps_var_loss = maps_var_loss_layer1 + maps_var_loss_layer2 + maps_var_loss_layer3# + maps_var_loss_layer4
+            maps_cov_loss = maps_cov_loss_layer1 + maps_cov_loss_layer2 + maps_cov_loss_layer3# + maps_cov_loss_layer4
 
             loss = loss + (1 - self.cfg.MODEL.ALPHA) * (
                 maps_inv_loss + maps_var_loss + maps_cov_loss

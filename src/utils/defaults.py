@@ -96,7 +96,7 @@ class TestConfig:
     DATASET: str = "kinetics"
 
     # Total mini-batch size
-    BATCH_SIZE: int = 5
+    BATCH_SIZE: int = 6
 
     # Path to the checkpoint to load the initial weight.
     CHECKPOINT_FILE_PATH: str = ""
@@ -187,6 +187,8 @@ class ModelConfig:
 
     # Checkpoint frequency
     CHECKPOINT_FREQ: int = 1
+
+    TWO_TOKEN: bool = False
 
 @dataclass
 class DistributedConfig:
