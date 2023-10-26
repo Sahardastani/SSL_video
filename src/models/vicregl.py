@@ -110,7 +110,7 @@ class VICRegL(pl.LightningModule):
         distances = torch.cdist(index_location_2.unsqueeze(-1).float(), index_location_1.unsqueeze(-1).float(), p=1)
         end_cdist = time.time()
         cdist_time = end_cdist-start_cdist
-        print('cdist:', cdist_time)
+        # print('cdist:', cdist_time)
         current_index_list2 = torch.min(distances, dim=-1)[1]
         I = torch.arange(index_location_2.shape[0], ).long().unsqueeze(-1).repeat(1, index_location_2.size(-1))
         map1_transform = org_maps_1.permute(1, 0, 2, 3)[I, current_index_list2].permute(1, 0, 2, 3)
@@ -128,7 +128,7 @@ class VICRegL(pl.LightningModule):
         end_loc = time.time()
         loc_time = end_loc - start_loc
 
-        print('l2', l2_time, 'loc:', loc_time)
+        # print('l2', l2_time, 'loc:', loc_time)
         return inv_loss, var_loss, cov_loss
 
     def local_loss(self, maps_embedding, locations, index_locations): 
@@ -340,7 +340,7 @@ class VICRegL(pl.LightningModule):
         end_second = time.time()
         second_time = end_second - start_second
 
-        print('first', first_time, 'second', second_time)
+        # print('first', first_time, 'second', second_time)
         return outputs
 
     def forward(self, inputs, is_val=False, backbone_only=False):
@@ -390,7 +390,7 @@ class VICRegL(pl.LightningModule):
             self.log('mcov_l', maps_cov_loss)
         end_local = time.time()
         local_time = end_local - start_local
-        print('global:', global_time, 'local', local_time)
+        # print('global:', global_time, 'local', local_time)
         return loss
     
     def training_step(self, train_batch, batch_idx):

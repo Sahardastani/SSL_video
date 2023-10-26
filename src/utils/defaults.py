@@ -96,7 +96,7 @@ class TestConfig:
     DATASET: str = "kinetics"
 
     # Total mini-batch size
-    BATCH_SIZE: int = 6
+    BATCH_SIZE: int = 8
 
     # Path to the checkpoint to load the initial weight.
     CHECKPOINT_FILE_PATH: str = ""

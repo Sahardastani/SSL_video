@@ -6,5 +6,5 @@ current: /home/as89480@ens.ad.etsmtl.ca/SSL_video
 model_path: /home/as89480@ens.ad.etsmtl.ca/SSL_video/models
 
 # Dataset directory
-PATH_PREFIX: /home/as89480@ens.ad.etsmtl.ca/SSL_video/k400
+PATH_PREFIX: /home/as89480@ens.ad.etsmtl.ca/SSL_video/ucf101
 

@@ -3,7 +3,6 @@ sys.path.append('/home/as89480@ens.ad.etsmtl.ca/SSL_video')
 
 import wandb
 import os
-os.environ["WANDB_MODE"]="offline"
 
 import hydra
 import time 
@@ -20,6 +19,7 @@ from src import configs_dir
 
 from src.utils.defaults import build_config
 from src.datasets.kinetics import Kinetics
+from src.datasets.ucf101 import UCF101
 from src.models.vicregl import VICRegL
 from src.utils import utils 
 
@@ -44,7 +44,8 @@ def run_pretraining(cfg: DictConfig) -> None:
 
     utils.set_seed(cfg.common.seed)
     
-    dataset = Kinetics(cfg=config, mode="train", num_retries=10, get_flow=False)
+    # dataset = Kinetics(cfg=config, mode="train", num_retries=10, get_flow=False)
+    dataset = UCF101(cfg=config, mode="train", num_retries=10)
     train_loader = torch.utils.data.DataLoader(dataset=dataset, 
                                                 batch_size=cfg.common.batch_size, 
                                                 drop_last=True, 
@@ -58,8 +59,7 @@ def run_pretraining(cfg: DictConfig) -> None:
     model = VICRegL(cfg=config)
     model.apply(initialize_weights)
     wandb_logger = WandbLogger(config=OmegaConf.to_container(cfg, resolve=True), 
-                                project=cfg.wandb.name, 
-                                offline = True)
+                                project=cfg.wandb.name)
     
     trainer = pl.Trainer(devices= 2, #torch.cuda.device_count(), 
                          strategy='ddp_find_unused_parameters_true',

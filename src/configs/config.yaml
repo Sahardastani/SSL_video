@@ -6,7 +6,7 @@ defaults:
   - dirs: my_dir
 
 wandb:
-  mode: offline
+  mode: online
   project: video_ssl_project
   entity: null
   name: localtest1

@@ -13,6 +13,7 @@ wandb/
 .hydra/
 models/
 outputs/
+ucf101/
 
 
 # Byte-compiled / optimized / DLL files
