@@ -81,7 +81,7 @@ class Kinetics(torch.utils.data.Dataset):
         print("Constructing Kinetics {}...".format(mode))
         self._construct_loader()
         self._path_to_videos = np.asarray(self._path_to_videos)
-        self._labels = np.asarray(self._labels)
+        # self._labels = np.asarray(self._labels)
         self._spatial_temporal_idx = np.asarray(self._spatial_temporal_idx)
 
     def _construct_loader(self):
@@ -96,22 +96,20 @@ class Kinetics(torch.utils.data.Dataset):
         )
 
         self._path_to_videos = []
-        self._labels = []
+        # self._labels = []
         self._spatial_temporal_idx = []
         with open(path_to_file, "r") as f:
             for clip_idx, path_label in enumerate(f.read().splitlines()):
-                assert (
-                        len(path_label.split(self.cfg.DATA.PATH_LABEL_SEPARATOR))
-                        == 2
-                )
-                path, label = path_label.split(
-                    self.cfg.DATA.PATH_LABEL_SEPARATOR
-                )
+                # assert (
+                #         len(path_label.split(self.cfg.DATA.PATH_LABEL_SEPARATOR))
+                #         == 2
+                # )
+                path = path_label
                 for idx in range(self._num_clips):
                     self._path_to_videos.append(
                         os.path.join(self.cfg.DATA.PATH_PREFIX, path)
                     )
-                    self._labels.append(int(label))
+                    # self._labels.append(int(label))
                     self._spatial_temporal_idx.append(idx)
                     self._video_meta[clip_idx * self._num_clips + idx] = {}
         assert (
@@ -205,7 +203,7 @@ class Kinetics(torch.utils.data.Dataset):
         # Try to decode and sample a clip from a video. If the video can not be
         # decoded, repeatly find a random video replacement that can be decoded.
         for i_try in range(self._num_retries):
-            print('video:', self._path_to_videos[index])
+            # print('video:', self._path_to_videos[index])
             video_container = None
             try:
                 video_container = get_video_container(
@@ -259,7 +257,7 @@ class Kinetics(torch.utils.data.Dataset):
                     index = random.randint(0, len(self._path_to_videos) - 1)
                 continue
 
-            label = self._labels[index]
+            # label = self._labels[index]
 
             if self.mode in ["test", "val"] or self.cfg.DATA.NO_RGB_AUG:
                 # Perform color normalization.
@@ -329,16 +327,16 @@ class Kinetics(torch.utils.data.Dataset):
             desired_length = indexes[1].size(0)
             indexes[0] = torch.cat((indexes[0], torch.tensor([indexes[0][-1]] * (desired_length - len(indexes[0])))), dim=0)
 
-            meta_data = {}
-            breakpoint()
-            return frames, indexes, label, index, meta_data
+            return frames, indexes
 
         else:
+            print('skipping vide:', self._path_to_videos[index])
             raise RuntimeError(
                 "Failed to fetch video after {} retries.".format(
                     self._num_retries
                 )
             )
+            
 
     def __len__(self):
         """

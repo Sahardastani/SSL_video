@@ -1,5 +1,5 @@
 import sys
-sys.path.append('/home/as89480@ens.ad.etsmtl.ca/SSL_video')
+sys.path.append('/home/as89480@ens.ad.etsmtl.ca/projects/SSL_video')
 
 import wandb
 import os
@@ -44,8 +44,8 @@ def run_pretraining(cfg: DictConfig) -> None:
 
     utils.set_seed(cfg.common.seed)
     
-    # dataset = Kinetics(cfg=config, mode="train", num_retries=10, get_flow=False)
-    dataset = UCF101(cfg=config, mode="train", num_retries=10)
+    dataset = Kinetics(cfg=config, mode="train", num_retries=10, get_flow=False)
+    # dataset = UCF101(cfg=config, mode="train", num_retries=10)
     train_loader = torch.utils.data.DataLoader(dataset=dataset, 
                                                 batch_size=cfg.common.batch_size, 
                                                 drop_last=True, 
@@ -64,14 +64,17 @@ def run_pretraining(cfg: DictConfig) -> None:
     trainer = pl.Trainer(devices= 2, #torch.cuda.device_count(), 
                          strategy='ddp_find_unused_parameters_true',
                          max_epochs=cfg.common.epochs,
-                         logger=wandb_logger,
-                         log_every_n_steps=1)
+                         logger=wandb_logger,)
+                        #  log_every_n_steps=1)
 
     wandb_logger.watch(model, log="all")
 
     trainer.fit(model, train_loader)
-    print(model)
-    torch.save(model.backbone.state_dict(), os.path.join(cfg['dirs']['model_path'],'final_global.pth'))
+    
+    if not os.path.exists(cfg['dirs']['model_path']):
+        os.makedirs(cfg['dirs']['model_path'])
+
+    torch.save(model.backbone.state_dict(), os.path.join(cfg['dirs']['model_path'],'video_vicregl.pth'))
 
     wandb.finish()
 
