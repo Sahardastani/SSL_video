@@ -35,7 +35,7 @@ class VICRegL(pl.LightningModule):
         if self.cfg.MODEL.ALPHA > 0.0:
             self.projector = model_utils.MLP(cfg.MODEL.MLP, self.representation_dim, norm_layer)
 
-        self.classifier = nn.Linear(self.representation_dim, self.cfg.DATA.NUM_CLASSES)
+        # self.classifier = nn.Linear(self.representation_dim, self.cfg.DATA.NUM_CLASSES)
 
     def _vicreg_loss(self, x, y):
         repr_loss = self.cfg.MODEL.INV_COEFF * F.mse_loss(x, y)

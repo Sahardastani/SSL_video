@@ -14,6 +14,8 @@ wandb/
 models/
 outputs/
 ucf101/
+dataset/
+results/
 
 
 # Byte-compiled / optimized / DLL files

@@ -35,13 +35,6 @@ def run_pretraining(cfg: DictConfig) -> None:
 
     config = build_config(cfg)
 
-    # wandb.init(
-    #     config=OmegaConf.to_container(cfg, resolve=True),
-    #     reinit=True,
-    #     resume=True,
-    #     **cfg.wandb,
-    # )
-
     utils.set_seed(cfg.common.seed)
     
     dataset = Kinetics(cfg=config, mode="train", num_retries=10, get_flow=False)
@@ -51,10 +44,6 @@ def run_pretraining(cfg: DictConfig) -> None:
                                                 drop_last=True, 
                                                 num_workers=cfg.common.num_workers,
                                                 pin_memory=True)
-    # import tqdm
-    # for _ in tqdm.tqdm(train_loader):
-    #     ...
-    # return
 
     model = VICRegL(cfg=config)
     model.apply(initialize_weights)
@@ -73,8 +62,8 @@ def run_pretraining(cfg: DictConfig) -> None:
     
     if not os.path.exists(cfg['dirs']['model_path']):
         os.makedirs(cfg['dirs']['model_path'])
-
-    torch.save(model.backbone.state_dict(), os.path.join(cfg['dirs']['model_path'],'video_vicregl.pth'))
+   
+    torch.save(model.backbone.state_dict(), os.path.join(cfg['dirs']['model_path'],'test.pth'))
 
     wandb.finish()
 
