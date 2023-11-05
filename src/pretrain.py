@@ -54,6 +54,7 @@ def run_pretraining(cfg: DictConfig) -> None:
                          strategy='ddp_find_unused_parameters_true',
                          max_epochs=cfg.common.epochs,
                          logger=wandb_logger,)
+                        #  check_val_every_n_epoch=1)
                         #  log_every_n_steps=1)
 
     wandb_logger.watch(model, log="all")
