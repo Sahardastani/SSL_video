@@ -147,7 +147,7 @@ class ModelConfig:
     WARMUP_EPOCHS: int = 10
 
     # Optimizer
-    OPTIMIZER: str = "lars"
+    OPTIMIZER: str = "adam"
 
     # Weight decay
     WEIGHT_DECAY: float = 0.05
@@ -160,6 +160,8 @@ class ModelConfig:
 
     # The embedding dimension of maps_projector
     MAPS_MLP: str = "512-512-512"
+
+    DIM: list = field(default_factory=lambda: [64, 128, 256, 512])
 
     # The size of each layer
     LAYER_SIZES: list = (1, 1, 1, 1)
