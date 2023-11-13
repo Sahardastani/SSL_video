@@ -11,9 +11,17 @@ import torch
 from torch import nn
 import pytorch_lightning as pl
 import torch.nn.functional as F
-torch.cuda.empty_cache()
 from src.models.feature_extractors.r2p1d import OurVideoResNet
 from src.utils import model_utils
+
+import argparse
+import os
+import torch.backends.cudnn as cudnn
+import torch.distributed as dist
+import torch.utils.data
+
+from src.datasets.ucf101 import UCF101
+from src.utils.svt import utils
 
 device = torch.device("cuda")
 
@@ -30,7 +38,7 @@ class VICRegL(pl.LightningModule):
             raise Exception(f"Unsupported backbone {cfg.MODEL.ARCH}.")
         if self.cfg.MODEL.ALPHA < 1.0:
             dim = self.cfg.MODEL.DIM
-            
+
             self.maps_projector1 = model_utils.MLP(f'{dim[0]}-{dim[0]}-{dim[0]}', dim[0], norm_layer = "batch_norm")
             self.maps_projector2 = model_utils.MLP(f'{dim[1]}-{dim[1]}-{dim[1]}', dim[1], norm_layer = "batch_norm")
             self.maps_projector3 = model_utils.MLP(f'{dim[2]}-{dim[2]}-{dim[2]}', dim[2], norm_layer = "batch_norm")
@@ -283,10 +291,112 @@ class VICRegL(pl.LightningModule):
             self.log('local_loss', loss) # I guess its also contain global loss
 
         return loss
-    
-    def training_step(self, train_batch, batch_idx):
-        x = train_batch
+
+    def extract_feature_pipeline(self):
+        # ============ preparing data ... ============
+        dataset_train = UCFReturnIndexDataset(cfg=self.cfg, mode="train", num_retries=10)
+        dataset_val = UCFReturnIndexDataset(cfg=self.cfg, mode="val", num_retries=10)
+
+        train_labels = torch.tensor([s for s in dataset_train._labels]).long().cuda()
+        test_labels = torch.tensor([s for s in dataset_val._labels]).long().cuda()
+
+        data_loader_train = torch.utils.data.DataLoader(
+            dataset_train,
+            batch_size=self.cfg.TESTsvt.batch_size_per_gpu,
+            num_workers=self.cfg.TESTsvt.num_workers,
+            pin_memory=True,
+            drop_last=False,
+        )
+        data_loader_val = torch.utils.data.DataLoader(
+            dataset_val,
+            batch_size=self.cfg.TESTsvt.batch_size_per_gpu,
+            num_workers=self.cfg.TESTsvt.num_workers,
+            pin_memory=True,
+            drop_last=False,
+        )
+
+        model = self.backbone.backbone
+        model.cuda()
+        model.eval()
+
+        # ============ extract features ... ============
+        print("Extracting features for train set...")
+        train_features = self.extract_features(model, data_loader_train)
+        print("Extracting features for val set...")
+        test_features = self.extract_features(model, data_loader_val)
+
+        train_features = torch.cat(train_features)
+        test_features = torch.cat(test_features)
+
+        train_features = nn.functional.normalize(train_features, dim=1, p=2)
+        test_features = nn.functional.normalize(test_features, dim=1, p=2)
+
+        return train_features, test_features, train_labels, test_labels
+
+    @torch.no_grad()
+    def extract_features(self, model, dataloader):
+        features = []
+        metric_logger = utils.MetricLogger(delimiter="  ")
+        for samples, index in metric_logger.log_every(dataloader, 10):
+            samples = samples.cuda(non_blocking=True)
+            index = index.cuda(non_blocking=True)
+            feats = model(samples)
+            features.append(feats)
+        return features
+
+    @torch.no_grad()
+    def knn_classifier(self, train_features, train_labels, test_features, test_labels, k, T, num_classes=1000):
+        top1, top5, total = 0.0, 0.0, 0
+        train_features = train_features.t()
+        num_test_images, num_chunks = test_labels.shape[0], 100
+        imgs_per_chunk = num_test_images // num_chunks
+        retrieval_one_hot = torch.zeros(k, num_classes).cuda()
+        for idx in range(0, num_test_images, imgs_per_chunk):
+            # get the features for test images
+            features = test_features[
+                idx : min((idx + imgs_per_chunk), num_test_images), :
+            ]
+            targets = test_labels[idx : min((idx + imgs_per_chunk), num_test_images)]
+            batch_size = targets.shape[0]
+
+            # calculate the dot product and compute top-k neighbors
+            similarity = torch.mm(features, train_features)
+            distances, indices = similarity.topk(k, largest=True, sorted=True)
+            candidates = train_labels.view(1, -1).expand(batch_size, -1)
+            retrieved_neighbors = torch.gather(candidates, 1, indices)
+
+            retrieval_one_hot.resize_(batch_size * k, num_classes).zero_()
+            retrieval_one_hot.scatter_(1, retrieved_neighbors.view(-1, 1), 1)
+            distances_transform = distances.clone().div_(T).exp_()
+            probs = torch.sum(
+                torch.mul(
+                    retrieval_one_hot.view(batch_size, -1, num_classes),
+                    distances_transform.view(batch_size, -1, 1),
+                ),
+                1,
+            )
+            _, predictions = probs.sort(1, True)
+
+            # find the predictions that match the target
+            correct = predictions.eq(targets.data.view(-1, 1))
+            top1 = top1 + correct.narrow(1, 0, 1).sum().item()
+            top5 = top5 + correct.narrow(1, 0, 5).sum().item()
+            total += targets.size(0)
+        top1 = top1 * 100.0 / total
+        top5 = top5 * 100.0 / total
+        return top1, top5
+
+    def training_step(self, x):
         loss = self.forward(x)
+
+        # validation step
+        train_features, test_features, train_labels, test_labels = self.extract_feature_pipeline()
+        print("Features are ready!\nStart the k-NN classification.")
+        for k in self.cfg.TESTsvt.nb_knn:
+            top1, top5 = self.knn_classifier(train_features, train_labels, test_features, test_labels, k, self.cfg.TESTsvt.temperature)
+            self.log('top1', top1)
+            self.log('top5', top5)
+            print(f"{k}-NN classifier result: Top1: {top1}, Top5: {top5}")
         return loss
     
     def configure_optimizers(self):
@@ -355,3 +465,8 @@ def neirest_neighbores_on_l2(input_maps, candidate_maps, num_matches):
     """
     distances = torch.cdist(input_maps, candidate_maps)
     return neirest_neighbores(input_maps, candidate_maps, distances, num_matches)
+
+class UCFReturnIndexDataset(UCF101):
+    def __getitem__(self, idx):
+        img, _, _, _ = super(UCFReturnIndexDataset, self).__getitem__(idx)
+        return img, idx

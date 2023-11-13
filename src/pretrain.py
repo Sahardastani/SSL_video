@@ -20,7 +20,7 @@ from src import configs_dir
 from src.utils.defaults import build_config
 from src.datasets.kinetics import Kinetics
 from src.datasets.ucf101 import UCF101
-from src.models.vicregl import VICRegL
+from src.models.vicregl import VICRegL, UCFReturnIndexDataset
 from src.utils import utils 
 
 def initialize_weights(m):
@@ -37,9 +37,9 @@ def run_pretraining(cfg: DictConfig) -> None:
 
     utils.set_seed(cfg.common.seed)
     
-    dataset = Kinetics(cfg=config, mode="train", num_retries=10, get_flow=False)
-    # dataset = UCF101(cfg=config, mode="train", num_retries=10)
-    train_loader = torch.utils.data.DataLoader(dataset=dataset, 
+    dataset_train_kinetics = Kinetics(cfg=config, mode="train", num_retries=10, get_flow=False)
+    
+    train_loader = torch.utils.data.DataLoader(dataset=dataset_train_kinetics, 
                                                 batch_size=cfg.common.batch_size, 
                                                 drop_last=True, 
                                                 num_workers=cfg.common.num_workers,
@@ -53,13 +53,11 @@ def run_pretraining(cfg: DictConfig) -> None:
     trainer = pl.Trainer(devices= 2, #torch.cuda.device_count(), 
                          strategy='ddp_find_unused_parameters_true',
                          max_epochs=cfg.common.epochs,
-                         logger=wandb_logger,)
-                        #  check_val_every_n_epoch=1)
-                        #  log_every_n_steps=1)
+                         logger=wandb_logger)
 
     wandb_logger.watch(model, log="all")
 
-    trainer.fit(model, train_loader)
+    trainer.fit(model, train_dataloaders=train_loader)
     
     if not os.path.exists(cfg['dirs']['model_path']):
         os.makedirs(cfg['dirs']['model_path'])

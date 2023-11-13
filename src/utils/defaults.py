@@ -14,7 +14,7 @@ class DataConfig:
     SAMPLING_RATE: int = 32
     TRAIN_JITTER_SCALES: list = (256, 320)
     TRAIN_CROP_SIZE: int = 224
-    TEST_CROP_SIZE: int = 224
+    TEST_CROP_SIZE: int = 256
     INPUT_CHANNEL_NUM: list = (3,)
     PIN_MEMORY: bool = True
     NUM_WORKERS: int = 12
@@ -205,6 +205,36 @@ class DistributedConfig:
     DIST_URL: str = "env://"
 
 @dataclass
+class Testsvt:
+
+    NUM_SPATIAL_CROPS: int = 1
+
+    NUM_ENSEMBLE_VIEWS: int = 1
+
+    dataset: str = 'ucf101'
+
+    batch_size_per_gpu: int = 128
+
+    num_workers: int = 4
+
+    dump_features: str = ""
+
+    PATH_TO_DATA_DIR: str = "/home/as89480@ens.ad.etsmtl.ca/projects/data/ucf101/knn_splits"
+
+    PATH_PREFIX: str = "/home/as89480@ens.ad.etsmtl.ca/projects/data/ucf101/videos"
+
+    SAMPLING_RATE: int = 8
+
+    ENABLE_MULTI_THREAD_DECODE: bool = True
+
+    use_cuda: bool = True
+
+    nb_knn: list = field(default_factory=lambda: [5])
+
+    temperature: float = 0.07
+    
+
+@dataclass
 class Config:
     DATA: DataConfig
     MULTIGRID: MultiGrid
@@ -212,6 +242,7 @@ class Config:
     TEST: TestConfig
     MODEL: ModelConfig
     DISTRIBUTE: DistributedConfig
+    TESTsvt: Testsvt
 
 
 def build_config(cfg: DictConfig) -> None:
@@ -248,11 +279,13 @@ def build_config(cfg: DictConfig) -> None:
     DISTRIBUTE = DistributedConfig(WORLD_SIZE=cfg['model']['WORLD_SIZE'],
                                    LOCAL_RANK=cfg['model']['LOCAL_RANK'],
                                    DIST_URL=cfg['model']['DIST_URL'])
+    TESTsvt = Testsvt()
 
     config = Config(DATA=DATA,
                     MULTIGRID=MultiGrid(),
                     DATA_LOADER=DATA_LOADER,
                     TEST=TEST,
                     MODEL=MODEL,
-                    DISTRIBUTE=DISTRIBUTE)
+                    DISTRIBUTE=DISTRIBUTE,
+                    TESTsvt=TESTsvt)
     return config
