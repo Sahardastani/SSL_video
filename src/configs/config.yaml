@@ -7,12 +7,8 @@ defaults:
 
 wandb:
   mode: online
-  project: video_ssl_project
+  project: VICRegL_video
   entity: null
-  name: localtest1
-  group: ResNet 
-  tags: null 
-  notes: null 
 
 initialization:
   path_to_checkpoint: null 

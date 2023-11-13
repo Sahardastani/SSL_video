@@ -47,13 +47,14 @@ def run_pretraining(cfg: DictConfig) -> None:
 
     model = VICRegL(cfg=config)
     model.apply(initialize_weights)
-    wandb_logger = WandbLogger(config=OmegaConf.to_container(cfg, resolve=True), 
-                                project=cfg.wandb.name)
+    wandb_logger = WandbLogger(name = 'full_run', config=OmegaConf.to_container(cfg, resolve=True), 
+                                project=cfg.wandb.project, log_model="all")
     
     trainer = pl.Trainer(devices= 2, #torch.cuda.device_count(), 
                          strategy='ddp_find_unused_parameters_true',
                          max_epochs=cfg.common.epochs,
-                         logger=wandb_logger)
+                         logger=wandb_logger,
+                         log_every_n_steps=1)
 
     wandb_logger.watch(model, log="all")
 
