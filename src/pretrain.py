@@ -58,7 +58,7 @@ def run_pretraining(cfg: DictConfig) -> None:
 
     wandb_logger.watch(model, log="all")
 
-    trainer.fit(model, train_dataloaders=train_loader, val_dataloaders=train_loader)
+    trainer.fit(model, train_dataloaders = train_loader, val_dataloaders = train_loader)
     
     if not os.path.exists(cfg['dirs']['model_path']):
         os.makedirs(cfg['dirs']['model_path'])

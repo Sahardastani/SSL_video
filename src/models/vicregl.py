@@ -8,6 +8,7 @@
 import time
 from typing import Any, Optional
 import numpy as np
+from pytorch_lightning.utilities import rank_zero_info
 from pytorch_lightning.utilities.types import STEP_OUTPUT
 import torch
 from torch import nn
@@ -393,13 +394,14 @@ class VICRegL(pl.LightningModule):
         return loss
     
     def validation_step(self, batch, batch_idx):
-        train_features, test_features, train_labels, test_labels = self.extract_feature_pipeline()
-        print("Features are ready!\nStart the k-NN classification.")
-        for k in self.cfg.TESTsvt.nb_knn:
-            top1, top5 = self.knn_classifier(train_features, train_labels, test_features, test_labels, k, self.cfg.TESTsvt.temperature)
-            self.log('top1', top1)
-            self.log('top5', top5)
-            print(f"{k}-NN classifier result: Top1: {top1}, Top5: {top5}")
+        if self.global_rank == 0:
+            train_features, test_features, train_labels, test_labels = self.extract_feature_pipeline()
+            print("Features are ready!\nStart the k-NN classification.")
+            for k in self.cfg.TESTsvt.nb_knn:
+                top1, top5 = self.knn_classifier(train_features, train_labels, test_features, test_labels, k, self.cfg.TESTsvt.temperature)
+                self.log('top1', top1)
+                self.log('top5', top5)
+                print(f"{k}-NN classifier result: Top1: {top1}, Top5: {top5}")
     
     def configure_optimizers(self):
         if self.cfg.MODEL.OPTIMIZER == "adam":
