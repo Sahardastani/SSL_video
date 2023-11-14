@@ -54,11 +54,11 @@ def run_pretraining(cfg: DictConfig) -> None:
                          strategy='ddp_find_unused_parameters_true',
                          max_epochs=cfg.common.epochs,
                          logger=wandb_logger,
-                         log_every_n_steps=1)
+                         log_every_n_steps=100)
 
     wandb_logger.watch(model, log="all")
 
-    trainer.fit(model, train_dataloaders=train_loader)
+    trainer.fit(model, train_dataloaders=train_loader, val_dataloaders=train_loader)
     
     if not os.path.exists(cfg['dirs']['model_path']):
         os.makedirs(cfg['dirs']['model_path'])
