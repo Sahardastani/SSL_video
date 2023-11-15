@@ -232,6 +232,10 @@ class Testsvt:
     nb_knn: list = field(default_factory=lambda: [5])
 
     temperature: float = 0.07
+
+    use_cuda: bool = True
+
+    dist_url: str = "env://"
     
 
 @dataclass

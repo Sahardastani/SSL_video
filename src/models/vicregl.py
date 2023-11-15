@@ -328,8 +328,8 @@ class VICRegL(pl.LightningModule):
         print("Extracting features for val set...")
         test_features = self.extract_features(model, data_loader_val)
 
-        train_features = torch.cat(train_features)
-        test_features = torch.cat(test_features)
+        # train_features = torch.cat(train_features)
+        # test_features = torch.cat(test_features)
 
         train_features = nn.functional.normalize(train_features, dim=1, p=2)
         test_features = nn.functional.normalize(test_features, dim=1, p=2)
@@ -338,13 +338,44 @@ class VICRegL(pl.LightningModule):
 
     @torch.no_grad()
     def extract_features(self, model, dataloader):
-        features = []
         metric_logger = utils.MetricLogger(delimiter="  ")
+        features = None
         for samples, index in metric_logger.log_every(dataloader, 10):
             samples = samples.cuda(non_blocking=True)
             index = index.cuda(non_blocking=True)
-            feats = model(samples)
-            features.append(feats)
+            feats = model(samples).clone()
+
+            # init storage feature matrix
+            if dist.get_rank() == 0 and features is None:
+                features = torch.zeros(len(dataloader.dataset), feats.shape[-1])
+                # if args.use_cuda:
+                features = features.cuda(non_blocking=True)
+                print(f"Storing features into tensor of shape {features.shape}")
+
+            # get indexes from all processes
+            y_all = torch.empty(dist.get_world_size(), index.size(0), dtype=index.dtype, device=index.device)
+            y_l = list(y_all.unbind(0))
+            y_all_reduce = torch.distributed.all_gather(y_l, index, async_op=True)
+            y_all_reduce.wait()
+            index_all = torch.cat(y_l)
+
+            # share features between processes
+            feats_all = torch.empty(
+                dist.get_world_size(),
+                feats.size(0),
+                feats.size(1),
+                dtype=feats.dtype,
+                device=feats.device,
+            )
+            output_l = list(feats_all.unbind(0))
+            output_all_reduce = torch.distributed.all_gather(output_l, feats, async_op=True)
+            output_all_reduce.wait()
+
+            # update storage feature matrix
+            if dist.get_rank() == 0:
+                features.index_copy_(0, index_all, torch.cat(output_l))
+                # else:
+                #     features.index_copy_(0, index_all.cpu(), torch.cat(output_l).cpu())
         return features
 
     @torch.no_grad()
@@ -394,15 +425,22 @@ class VICRegL(pl.LightningModule):
         return loss
     
     def validation_step(self, batch, batch_idx):
-        if self.global_rank == 0:
-            train_features, test_features, train_labels, test_labels = self.extract_feature_pipeline()
+
+        train_features, test_features, train_labels, test_labels = self.extract_feature_pipeline()
+
+        if utils.get_rank() == 0:
+            if self.cfg.TESTsvt.use_cuda:
+                train_features = train_features.cuda()
+                test_features = test_features.cuda()
+                train_labels = train_labels.cuda()
+                test_labels = test_labels.cuda()
             print("Features are ready!\nStart the k-NN classification.")
             for k in self.cfg.TESTsvt.nb_knn:
-                top1, top5 = self.knn_classifier(train_features, train_labels, test_features, test_labels, k, self.cfg.TESTsvt.temperature)
-                self.log('top1', top1)
-                self.log('top5', top5)
+                top1, top5 = self.knn_classifier(train_features, train_labels,
+                    test_features, test_labels, k, self.cfg.TESTsvt.temperature)
                 print(f"{k}-NN classifier result: Top1: {top1}, Top5: {top5}")
-    
+        dist.barrier()
+       
     def configure_optimizers(self):
         if self.cfg.MODEL.OPTIMIZER == "adam":
             optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
@@ -420,7 +458,6 @@ def batched_index_select(input, dim, index):
     expanse[dim] = -1
     index = index.expand(expanse)
     return torch.gather(input, dim, index)
-
 
 def neirest_neighbores(input_maps, candidate_maps, distances, num_matches):
     batch_size = input_maps.size(0)
@@ -460,7 +497,6 @@ def neirest_neighbores(input_maps, candidate_maps, distances, num_matches):
         candidate_maps, 1, topk_indices_selected
     )
     return filtered_input_maps, filtered_candidate_maps
-
 
 def neirest_neighbores_on_l2(input_maps, candidate_maps, num_matches):
     """
