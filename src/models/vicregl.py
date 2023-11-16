@@ -34,6 +34,16 @@ class VICRegL(pl.LightningModule):
         self.cfg = cfg
         self.embedding_dim = int(cfg.MODEL.MLP.split("-")[-1])
 
+        self.train_ucf = []
+        self.val_ucf = []
+        self.first_epoch = True
+
+        self.dataset_train = UCFReturnIndexDataset(cfg=self.cfg, mode="train", num_retries=10)
+        self.dataset_val = UCFReturnIndexDataset(cfg=self.cfg, mode="val", num_retries=10)
+
+        self.train_labels = torch.tensor([s for s in self.dataset_train._labels]).long().cuda()
+        self.test_labels = torch.tensor([s for s in self.dataset_val._labels]).long().cuda()
+
         if "resnet" in cfg.MODEL.ARCH:
             self.backbone, self.representation_dim = OurVideoResNet(), 512
             norm_layer = "batch_norm"
@@ -424,30 +434,56 @@ class VICRegL(pl.LightningModule):
         loss = self.forward(x)
         return loss
     
-    def validation_step(self, batch, batch_idx):
+    def validation_step(self, batch, batch_idx, dataloader_idx=0):
 
-        train_features, test_features, train_labels, test_labels = self.extract_feature_pipeline()
+        model = self.backbone.backbone
+        model.cuda()
+        model.eval()
+        
+        if dataloader_idx == 0:
+            # train
+            feats = model(batch[0])
+            self.train_ucf.append(feats)
 
-        if utils.get_rank() == 0:
+        elif dataloader_idx == 1:
+            # val
+            feats = model(batch[0])
+            self.val_ucf.append(feats)
+
+    def on_validation_epoch_end(self):
+        
+        if self.first_epoch == True:
+            self.first_epoch = False
+        else:
+            train_features = torch.cat(self.train_ucf)
+            test_features = torch.cat(self.val_ucf)
+            
+            train_features = nn.functional.normalize(train_features, dim=1, p=2)
+            test_features = nn.functional.normalize(test_features, dim=1, p=2)
+            
+            all_train = self.all_gather(train_features).reshape(-1, 400)
+            all_val = self.all_gather(test_features).reshape(-1, 400)
+
             if self.cfg.TESTsvt.use_cuda:
-                train_features = train_features.cuda()
-                test_features = test_features.cuda()
-                train_labels = train_labels.cuda()
-                test_labels = test_labels.cuda()
+                all_train = all_train.cuda()
+                all_val = all_val.cuda()
+                train_labels = self.train_labels.cuda()
+                test_labels = self.test_labels.cuda()
             print("Features are ready!\nStart the k-NN classification.")
             for k in self.cfg.TESTsvt.nb_knn:
-                top1, top5 = self.knn_classifier(train_features, train_labels,
-                    test_features, test_labels, k, self.cfg.TESTsvt.temperature)
+                top1, top5 = self.knn_classifier(all_train, train_labels,
+                    all_val, test_labels, k, self.cfg.TESTsvt.temperature)
                 print(f"{k}-NN classifier result: Top1: {top1}, Top5: {top5}")
-        dist.barrier()
-       
+
+        self.train_ucf.clear()
+        self.val_ucf.clear()
+    
     def configure_optimizers(self):
         if self.cfg.MODEL.OPTIMIZER == "adam":
             optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
             return optimizer
         else:
             print(f"{self.cfg.MODEL.OPTIMIZER} is not in the optimizer list.")
-
 
 def batched_index_select(input, dim, index):
     for ii in range(1, len(input.shape)):

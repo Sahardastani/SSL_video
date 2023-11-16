@@ -21,7 +21,6 @@ from src import configs_dir
 
 from src.utils.defaults import build_config
 from src.datasets.kinetics import Kinetics
-from src.datasets.random import RandomDataset
 from src.models.vicregl import VICRegL, UCFReturnIndexDataset
 from src.utils import utils_main
 from src.utils.svt import utils 
@@ -39,22 +38,26 @@ def run_pretraining(cfg: DictConfig) -> None:
     config = build_config(cfg)
 
     utils_main.set_seed(cfg.common.seed)
+    
+    kinetics_train = Kinetics(cfg=config, mode="train", num_retries=10, get_flow=False)
+    ucf_train = UCFReturnIndexDataset(cfg=config, mode="train", num_retries=10)
+    ucf_val = UCFReturnIndexDataset(cfg=config, mode="val", num_retries=10)
 
-    utils.init_distributed_mode(config)
-    print("git:\n  {}\n".format(utils.get_sha()))
-    print("\n".join("%s: %s" % (k, str(v)) for k, v in sorted(dict(vars(config)).items())))
-    cudnn.benchmark = True
-    
-    dataset_train_kinetics = Kinetics(cfg=config, mode="train", num_retries=10, get_flow=False)
-    dataset_val = RandomDataset(100)
-    
-    train_loader = torch.utils.data.DataLoader(dataset=dataset_train_kinetics, 
+    kinetics_train_loader = torch.utils.data.DataLoader(dataset=kinetics_train, 
                                                 batch_size=cfg.common.batch_size, 
                                                 drop_last=True, 
                                                 num_workers=cfg.common.num_workers,
                                                 pin_memory=True)
-    
-    val_dataloader = torch.utils.data.DataLoader(dataset_val, batch_size=100, shuffle=True)
+    ucf_train_loader = torch.utils.data.DataLoader(ucf_train,
+                                                batch_size=config.TESTsvt.batch_size_per_gpu,
+                                                num_workers=config.TESTsvt.num_workers,
+                                                pin_memory=True,
+                                                drop_last=False,)
+    ucf_val_loader = torch.utils.data.DataLoader(ucf_val,
+                                                batch_size=config.TESTsvt.batch_size_per_gpu,
+                                                num_workers=config.TESTsvt.num_workers,
+                                                pin_memory=True,
+                                                drop_last=False,)
 
     model = VICRegL(cfg=config)
     model.apply(initialize_weights)
@@ -69,7 +72,7 @@ def run_pretraining(cfg: DictConfig) -> None:
 
     wandb_logger.watch(model, log="all")
 
-    trainer.fit(model, train_dataloaders = train_loader, val_dataloaders = val_dataloader)
+    trainer.fit(model, train_dataloaders = kinetics_train_loader, val_dataloaders = [ucf_train_loader, ucf_val_loader])
     
     if not os.path.exists(cfg['dirs']['model_path']):
         os.makedirs(cfg['dirs']['model_path'])
