@@ -37,7 +37,7 @@ def run_pretraining(cfg: DictConfig) -> None:
 
     config = build_config(cfg)
 
-    utils_main.set_seed(cfg.common.seed)
+    # utils_main.set_seed(cfg.common.seed)
     
     kinetics_train = Kinetics(cfg=config, mode="train", num_retries=10, get_flow=False)
     ucf_train = UCFReturnIndexDataset(cfg=config, mode="train", num_retries=10)
@@ -60,7 +60,7 @@ def run_pretraining(cfg: DictConfig) -> None:
                                                 drop_last=False,)
 
     model = VICRegL(cfg=config)
-    model.apply(initialize_weights)
+    # model.apply(initialize_weights)
     wandb_logger = WandbLogger(name = 'validation', config=OmegaConf.to_container(cfg, resolve=True), 
                                 project=cfg.wandb.project, log_model="all")
     
@@ -68,11 +68,11 @@ def run_pretraining(cfg: DictConfig) -> None:
                          strategy='ddp_find_unused_parameters_true',
                          max_epochs=cfg.common.epochs,
                          logger=wandb_logger,
-                         log_every_n_steps=100)
+                         log_every_n_steps=1)
 
     wandb_logger.watch(model, log="all")
 
-    trainer.fit(model, train_dataloaders = kinetics_train_loader, val_dataloaders = [ucf_train_loader, ucf_val_loader])
+    trainer.fit(model, train_dataloaders = kinetics_train_loader)#, val_dataloaders = [ucf_train_loader, ucf_val_loader])
     
     if not os.path.exists(cfg['dirs']['model_path']):
         os.makedirs(cfg['dirs']['model_path'])

@@ -49,6 +49,7 @@ class VICRegL(pl.LightningModule):
             norm_layer = "batch_norm"
         else:
             raise Exception(f"Unsupported backbone {cfg.MODEL.ARCH}.")
+        
         if self.cfg.MODEL.ALPHA < 1.0:
             dim = self.cfg.MODEL.DIM
 
@@ -99,42 +100,64 @@ class VICRegL(pl.LightningModule):
         cov_loss = 0.0
 
         # L2 distance based macthing
-        if self.cfg.MODEL.L2_ALL_MATCHES:
-            num_matches_on_l2 = [None, None]
-        else:
-            num_matches_on_l2 = self.cfg.MODEL.NUM_MATCHES
-        
-        maps_1_filtered, maps_1_nn = neirest_neighbores_on_l2(
-            maps_1, maps_2, num_matches=num_matches_on_l2[0]
-        )
-        maps_2_filtered, maps_2_nn = neirest_neighbores_on_l2(
-            maps_2, maps_1, num_matches=num_matches_on_l2[1]
-        )
 
+        m1 = org_maps_1.view(org_maps_1.shape[0], -1, org_maps_1.shape[-1])
+        m2 = org_maps_2.view(org_maps_2.shape[0], -1, org_maps_2.shape[-1])
+        
+        maps_1_filtered, maps_1_nn = neirest_neighbores_on_l2(m1, m2, num_matches=None)
+        maps_2_filtered, maps_2_nn = neirest_neighbores_on_l2(m2, m1, num_matches=None)
+        
         inv_loss_1, var_loss_1, cov_loss_1 = self._vicreg_loss(maps_1_filtered, maps_1_nn)
         inv_loss_2, var_loss_2, cov_loss_2 = self._vicreg_loss(maps_2_filtered, maps_2_nn)
-        var_loss = var_loss + (var_loss_1 / 2 + var_loss_2 / 2)
-        cov_loss = cov_loss + (cov_loss_1 / 2 + cov_loss_2 / 2)
 
         inv_loss = inv_loss + (inv_loss_1 / 2 + inv_loss_2 / 2)
+        var_loss = var_loss + (var_loss_1 / 2 + var_loss_2 / 2)
+        cov_loss = cov_loss + (cov_loss_1 / 2 + cov_loss_2 / 2)
 
         # Location based matching
-        
-        distances = torch.cdist(index_location_2.unsqueeze(-1).float(), index_location_1.unsqueeze(-1).float(), p=1)
-        current_index_list2 = torch.min(distances, dim=-1)[1]
-        I = torch.arange(index_location_2.shape[0], ).long().unsqueeze(-1).repeat(1, index_location_2.size(-1))
-        map1_transform = org_maps_1.permute(1, 0, 2, 3)[I, current_index_list2].permute(1, 0, 2, 3)
 
+        I = torch.arange(index_location_2.shape[0]).long().unsqueeze(-1).repeat(1, index_location_2.size(-1))
+        
         distances = torch.cdist(index_location_1.unsqueeze(-1).float(), index_location_2.unsqueeze(-1).float(), p=1)
         current_index_list1 = torch.min(distances, dim=-1)[1]
-        map2_transform = org_maps_2.permute(1, 0, 2, 3)[I, current_index_list1].permute(1, 0, 2, 3)
+        map1_transform = org_maps_1.permute(1, 0, 2, 3)[I, current_index_list1].permute(1, 0, 2, 3)
 
-        inv_loss_1, var_loss_1, cov_loss_1 = self._vicreg_loss(map1_transform.reshape(-1, 1, map1_transform.shape[-1]), org_maps_2.reshape(-1, 1, org_maps_2.shape[-1]))
-        inv_loss_2, var_loss_2, cov_loss_2 = self._vicreg_loss(map2_transform.reshape(-1, 1, map2_transform.shape[-1]), org_maps_1.reshape(-1, 1, org_maps_1.shape[-1]))
+        distances = torch.cdist(index_location_2.unsqueeze(-1).float(), index_location_1.unsqueeze(-1).float(), p=1)
+        current_index_list2 = torch.min(distances, dim=-1)[1]
+        map2_transform = org_maps_2.permute(1, 0, 2, 3)[I, current_index_list2].permute(1, 0, 2, 3)
 
-        inv_loss = inv_loss + (inv_loss_1 / 2 + inv_loss_2 / 2)
-        var_loss = var_loss + (var_loss_1 / 2 + var_loss_2 / 2)
-        cov_loss = cov_loss + (cov_loss_1 / 2 + cov_loss_2 / 2)
+        # 0, 1
+        first_map1 = map1_transform.permute(1, 0, 2, 3)[0:8].reshape(-1, 1, map1_transform.shape[-1])
+        first_map2 = map2_transform.permute(1, 0, 2, 3)[0:8].reshape(-1, 1, map2_transform.shape[-1])
+
+        first_org1 = org_maps_1.permute(1, 0, 2, 3)[0:8].reshape(-1, 1, org_maps_1.shape[-1])
+        first_org2 = org_maps_2.permute(1, 0, 2, 3)[0:8].reshape(-1, 1, org_maps_2.shape[-1])
+
+        first_inv_loss_1, first_var_loss_1, first_cov_loss_1 = self._vicreg_loss(first_map1, first_org2)
+        first_inv_loss_2, first_var_loss_2, first_cov_loss_2 = self._vicreg_loss(first_map2, first_org1)
+
+        first_inv = first_inv_loss_1 / 2 + first_inv_loss_2 / 2
+        first_var = first_var_loss_1/ 2 + first_var_loss_2 / 2
+        first_cov = first_cov_loss_1 / 2 + first_cov_loss_2 / 2
+
+        # 1, 0
+        second_map1 = map1_transform.permute(1, 0, 2, 3)[8:16].reshape(-1, 1, map1_transform.shape[-1])
+        second_map2 = map2_transform.permute(1, 0, 2, 3)[8:16].reshape(-1, 1, map2_transform.shape[-1])
+        
+        second_org1 = org_maps_1.permute(1, 0, 2, 3)[8:16].reshape(-1, 1, org_maps_1.shape[-1])
+        second_org2 = org_maps_2.permute(1, 0, 2, 3)[8:16].reshape(-1, 1, org_maps_2.shape[-1])
+
+        second_inv_loss_1, second_var_loss_1, second_cov_loss_1 = self._vicreg_loss(second_map1, second_org2)
+        second_inv_loss_2, second_var_loss_2, second_cov_loss_2 = self._vicreg_loss(second_map2, second_org1)
+
+        second_inv = second_inv_loss_1 / 2 + second_inv_loss_2 / 2
+        second_var = second_var_loss_1 / 2 + second_var_loss_2 / 2
+        second_cov = second_cov_loss_1 / 2 + second_cov_loss_2 / 2
+
+
+        inv_loss = inv_loss + (first_inv / 2 + second_inv / 2)
+        var_loss = var_loss + (first_var / 2 + second_var / 2)
+        cov_loss = cov_loss + (first_cov / 2 + second_cov / 2)
 
         return inv_loss, var_loss, cov_loss
 
@@ -142,7 +165,7 @@ class VICRegL(pl.LightningModule):
         inv_loss = 0.0
         var_loss = 0.0
         cov_loss = 0.0
-        iter_ = 0
+        # iter_ = 0
         
         for k in range(maps_embedding[0].shape[0]):
             each_frame_maps_embedding = [maps_embedding[0][k], maps_embedding[1][k]]
@@ -165,11 +188,6 @@ class VICRegL(pl.LightningModule):
             inv_loss = inv_loss + inv_loss_this
             var_loss = var_loss + var_loss_this
             cov_loss = cov_loss + cov_loss_this
-            iter_ += 1
-
-        inv_loss = inv_loss / iter_
-        var_loss = var_loss / iter_
-        cov_loss = cov_loss / iter_
 
         return inv_loss, var_loss, cov_loss
 
@@ -245,7 +263,6 @@ class VICRegL(pl.LightningModule):
             if self.cfg.MODEL.ALPHA > 0.0:
                 embedding = self.projector(representation)
                 outputs["embedding"].append(embedding)
-
             # Local
             if self.cfg.MODEL.ALPHA < 1.0:
                 pool = nn.AdaptiveAvgPool2d((1,1))
@@ -284,24 +301,24 @@ class VICRegL(pl.LightningModule):
             self.log('global_var_loss', var_loss)
             self.log('global_cov_loss', cov_loss)
             self.log('global_loss', loss)
+            
+        # # Local criterion
+        # if self.cfg.MODEL.ALPHA < 1.0:
+        #     (maps_inv_loss_layer1, maps_var_loss_layer1, maps_cov_loss_layer1) = self.local_loss(outputs["layer_1"], outputs["index_layer1"]) 
+        #     (maps_inv_loss_layer2, maps_var_loss_layer2, maps_cov_loss_layer2) = self.local_loss(outputs["layer_2"], outputs["index_layer2"]) 
+        #     (maps_inv_loss_layer3, maps_var_loss_layer3, maps_cov_loss_layer3) = self.local_loss(outputs["layer_3"], outputs["index_layer3"])
 
-        # Local criterion
-        if self.cfg.MODEL.ALPHA < 1.0:
-            (maps_inv_loss_layer1, maps_var_loss_layer1, maps_cov_loss_layer1) = self.local_loss(outputs["layer_1"], outputs["index_layer1"]) 
-            (maps_inv_loss_layer2, maps_var_loss_layer2, maps_cov_loss_layer2) = self.local_loss(outputs["layer_2"], outputs["index_layer2"]) 
-            (maps_inv_loss_layer3, maps_var_loss_layer3, maps_cov_loss_layer3) = self.local_loss(outputs["layer_3"], outputs["index_layer3"])
+        #     maps_inv_loss = maps_inv_loss_layer1 + maps_inv_loss_layer2 + maps_inv_loss_layer3
+        #     maps_var_loss = maps_var_loss_layer1 + maps_var_loss_layer2 + maps_var_loss_layer3
+        #     maps_cov_loss = maps_cov_loss_layer1 + maps_cov_loss_layer2 + maps_cov_loss_layer3
 
-            maps_inv_loss = maps_inv_loss_layer1 + maps_inv_loss_layer2 + maps_inv_loss_layer3
-            maps_var_loss = maps_var_loss_layer1 + maps_var_loss_layer2 + maps_var_loss_layer3
-            maps_cov_loss = maps_cov_loss_layer1 + maps_cov_loss_layer2 + maps_cov_loss_layer3
-
-            loss = loss + (1 - self.cfg.MODEL.ALPHA) * (
-                maps_inv_loss + maps_var_loss + maps_cov_loss
-            )
-            self.log('local_inv_loss', maps_inv_loss)
-            self.log('local_var_loss', maps_var_loss)
-            self.log('local_cov_loss', maps_cov_loss)
-            self.log('local_loss', loss) # I guess its also contain global loss
+        #     loss = loss + (1 - self.cfg.MODEL.ALPHA) * (
+        #         maps_inv_loss + maps_var_loss + maps_cov_loss
+        #     )
+        #     self.log('local_inv_loss', maps_inv_loss)
+        #     self.log('local_var_loss', maps_var_loss)
+        #     self.log('local_cov_loss', maps_cov_loss)
+        #     self.log('local_loss', loss) # its also contain global loss
 
         return loss
 
@@ -474,13 +491,16 @@ class VICRegL(pl.LightningModule):
                 top1, top5 = self.knn_classifier(all_train, train_labels,
                     all_val, test_labels, k, self.cfg.TESTsvt.temperature)
                 print(f"{k}-NN classifier result: Top1: {top1}, Top5: {top5}")
+                self.log('top1', top1, sync_dist=True)
+                self.log('top5', top5, sync_dist=True)
 
         self.train_ucf.clear()
         self.val_ucf.clear()
     
     def configure_optimizers(self):
         if self.cfg.MODEL.OPTIMIZER == "adam":
-            optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+            optimizer = torch.optim.Adam(self.parameters(), lr=3e-4)
+            self.log('lr', 3e-4)
             return optimizer
         else:
             print(f"{self.cfg.MODEL.OPTIMIZER} is not in the optimizer list.")
@@ -497,7 +517,7 @@ def batched_index_select(input, dim, index):
 
 def neirest_neighbores(input_maps, candidate_maps, distances, num_matches):
     batch_size = input_maps.size(0)
-
+    
     if num_matches is None or num_matches == -1:
         num_matches = input_maps.size(1)
     
