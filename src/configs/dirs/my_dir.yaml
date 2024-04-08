@@ -6,3 +6,4 @@ current: /home/as89480@ens.ad.etsmtl.ca/projects/SSL_video
 model_path: /home/as89480@ens.ad.etsmtl.ca/projects/SSL_video/checkpoints_pretraining/vicregl
 # Dataset directory
 PATH_PREFIX: /home/as89480@ens.ad.etsmtl.ca/projects/SSL_video/dataset/k400
+# PATH_PREFIX: /home/as89480@ens.ad.etsmtl.ca/projects/data/ucf101/ucf

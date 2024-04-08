@@ -17,9 +17,9 @@ from src.datasets.video_container import get_video_container
 from src.utils.defaults import build_config
 logger = get_logger(__name__)
 
-class Kinetics(torch.utils.data.Dataset):
+class UCFtransform(torch.utils.data.Dataset):
     """
-    Kinetics video loader. Construct the Kinetics video loader, then sample
+    UCF101 video loader. Construct the UCF101 video loader, then sample
     clips from the videos. For training and validation, a single clip is
     randomly sampled from every video with random cropping, scaling, and
     flipping. For testing, multiple clips are uniformaly sampled from every
@@ -30,7 +30,7 @@ class Kinetics(torch.utils.data.Dataset):
 
     def __init__(self, cfg, mode, num_retries=10, get_flow=False):
         """
-        Construct the Kinetics video loader with a given csv file. The format of
+        Construct the UCF101 video loader with a given csv file. The format of
         the csv file is:
         ```
         path_to_video_1 label_1
@@ -52,7 +52,7 @@ class Kinetics(torch.utils.data.Dataset):
             "train",
             "val",
             "test",
-        ], "Split '{}' not supported for Kinetics".format(mode)
+        ], "Split '{}' not supported for UCF101".format(mode)
         self.mode = mode
         self.cfg = cfg
         if get_flow:
@@ -72,7 +72,7 @@ class Kinetics(torch.utils.data.Dataset):
                     cfg.TEST.NUM_ENSEMBLE_VIEWS * cfg.TEST.NUM_SPATIAL_CROPS
             )
 
-        print("Constructing Kinetics {}...".format(mode))
+        print("Constructing UCF101 {}...".format(mode))
         self._construct_loader()
         self._path_to_videos = np.asarray(self._path_to_videos)
         self._labels = np.asarray(self._labels)
@@ -83,7 +83,10 @@ class Kinetics(torch.utils.data.Dataset):
         Construct the video loader.
         """
         path_to_file = os.path.join(
-            self.cfg.DATA.PATH_PREFIX, 'annotations', "{}.csv".format(self.mode)
+            # self.cfg.DATA.PATH_PREFIX, 'annotations', "{}.csv".format(self.mode)
+            self.cfg.DATA.PATH_PREFIX, "ucf101_{}_split_1_videos.txt".format(self.mode)
+            # self.cfg.DATA.PATH_PREFIX, "{}.txt".format(self.mode)
+
         )
         assert os.path.exists(path_to_file), "{} dir not found".format(
             path_to_file
@@ -103,18 +106,18 @@ class Kinetics(torch.utils.data.Dataset):
                 )
                 for idx in range(self._num_clips):
                     self._path_to_videos.append(
-                        os.path.join(self.cfg.DATA.PATH_PREFIX, path)
+                        os.path.join(self.cfg.DATA.PATH_PREFIX, 'videos', path)
                     )
                     self._labels.append(int(label))
                     self._spatial_temporal_idx.append(idx)
                     self._video_meta[clip_idx * self._num_clips + idx] = {}
         assert (
                 len(self._path_to_videos) > 0
-        ), "Failed to load Kinetics split {} from {}".format(
+        ), "Failed to load UCF101 split {} from {}".format(
             self._split_idx, path_to_file
         )
         print(
-            "Constructing kinetics dataloader (size: {}) from {}".format(
+            "Constructing UCF101 dataloader (size: {}) from {}".format(
                 len(self._path_to_videos), path_to_file
             )
         )
@@ -226,7 +229,7 @@ class Kinetics(torch.utils.data.Dataset):
                 continue
 
             # Decode video. Meta info is used to perform selective decoding.
-            if self.mode == "train":
+            if self.mode == "train": 
                 frames, indexes = decode(
                     container=video_container, 
                     sampling_rate=sampling_rate, 
@@ -240,7 +243,6 @@ class Kinetics(torch.utils.data.Dataset):
                     temporal_aug=self.mode == "train" and not self.cfg.DATA.NO_RGB_AUG,
                     rand_fr=self.cfg.DATA.RAND_FR #True
                 )
-
             elif self.mode == "val":
                 frames, indexes = decode(
                     container=video_container, 
@@ -252,6 +254,7 @@ class Kinetics(torch.utils.data.Dataset):
                     target_fps=self.cfg.DATA.TARGET_FPS,
                     backend=self.cfg.DATA.DECODING_BACKEND,
                     max_spatial_scale=min_scale,
+                    # temporal_aug=self.mode == "train" and not self.cfg.DATA.NO_RGB_AUG,
                     temporal_aug=self.mode == "val" and not self.cfg.DATA.NO_RGB_AUG,
                     rand_fr=self.cfg.DATA.RAND_FR #True
                 )
@@ -271,6 +274,7 @@ class Kinetics(torch.utils.data.Dataset):
 
             label = self._labels[index]
 
+            # if self.mode in ["test", "val"] or self.cfg.DATA.NO_RGB_AUG:
             if self.mode in ["test"] or self.cfg.DATA.NO_RGB_AUG:
                 # Perform color normalization.
                 frames = tensor_normalize(
@@ -325,19 +329,19 @@ class Kinetics(torch.utils.data.Dataset):
                     ).long(),
                 ) for x in frames]
             
-            # padding g1 to have the same number of frames as g2
-            channel_0, frame_numbers_0, height_0, width_0 = frames[0].shape
-            channel_1, frame_numbers_1, height_1, width_1 = frames[1].shape
+                # padding g1 to have the same number of frames as g2
+                channel_0, frame_numbers_0, height_0, width_0 = frames[0].shape
+                channel_1, frame_numbers_1, height_1, width_1 = frames[1].shape
 
-            frames_to_add = frame_numbers_1 - frame_numbers_0
+                frames_to_add = frame_numbers_1 - frame_numbers_0
 
-            if frames_to_add > 0:
-                padding = torch.zeros(channel_0, frames_to_add, height_0, width_0)
-                frames[0] = torch.cat((frames[0], padding), dim=1)
-            
-            # make g1 index equal to g2 index ( 4 --> 8) by adding the last value at the end of indexes
-            desired_length = indexes[1].size(0)
-            indexes[0] = torch.cat((indexes[0], torch.tensor([indexes[0][-1]] * (desired_length - len(indexes[0])))), dim=0)
+                if frames_to_add > 0:
+                    padding = torch.zeros(channel_0, frames_to_add, height_0, width_0)
+                    frames[0] = torch.cat((frames[0], padding), dim=1)
+                
+                # make g1 index equal to g2 index ( 4 --> 8) by adding the last value at the end of indexes
+                desired_length = indexes[1].size(0)
+                indexes[0] = torch.cat((indexes[0], torch.tensor([indexes[0][-1]] * (desired_length - len(indexes[0])))), dim=0)
 
             return frames, indexes, label
 

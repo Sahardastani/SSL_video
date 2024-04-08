@@ -18,6 +18,7 @@ class OurVideoResNet(torch.nn.Module):
     def __init__(self):
         super().__init__()
         self.backbone = r2plus1d_18()
+        self.backbone.fc = nn.Linear(512, 101)
 
     def forward(self, x):
         layer0_out = self.backbone.stem(x)

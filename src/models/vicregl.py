@@ -302,108 +302,25 @@ class VICRegL(pl.LightningModule):
             self.log('global_cov_loss', cov_loss)
             self.log('global_loss', loss)
             
-        # # Local criterion
-        # if self.cfg.MODEL.ALPHA < 1.0:
-        #     (maps_inv_loss_layer1, maps_var_loss_layer1, maps_cov_loss_layer1) = self.local_loss(outputs["layer_1"], outputs["index_layer1"]) 
-        #     (maps_inv_loss_layer2, maps_var_loss_layer2, maps_cov_loss_layer2) = self.local_loss(outputs["layer_2"], outputs["index_layer2"]) 
-        #     (maps_inv_loss_layer3, maps_var_loss_layer3, maps_cov_loss_layer3) = self.local_loss(outputs["layer_3"], outputs["index_layer3"])
+        # Local criterion
+        if self.cfg.MODEL.ALPHA < 1.0:
+            (maps_inv_loss_layer1, maps_var_loss_layer1, maps_cov_loss_layer1) = self.local_loss(outputs["layer_1"], outputs["index_layer1"]) 
+            (maps_inv_loss_layer2, maps_var_loss_layer2, maps_cov_loss_layer2) = self.local_loss(outputs["layer_2"], outputs["index_layer2"]) 
+            (maps_inv_loss_layer3, maps_var_loss_layer3, maps_cov_loss_layer3) = self.local_loss(outputs["layer_3"], outputs["index_layer3"])
 
-        #     maps_inv_loss = maps_inv_loss_layer1 + maps_inv_loss_layer2 + maps_inv_loss_layer3
-        #     maps_var_loss = maps_var_loss_layer1 + maps_var_loss_layer2 + maps_var_loss_layer3
-        #     maps_cov_loss = maps_cov_loss_layer1 + maps_cov_loss_layer2 + maps_cov_loss_layer3
+            maps_inv_loss = maps_inv_loss_layer1 + maps_inv_loss_layer2 + maps_inv_loss_layer3
+            maps_var_loss = maps_var_loss_layer1 + maps_var_loss_layer2 + maps_var_loss_layer3
+            maps_cov_loss = maps_cov_loss_layer1 + maps_cov_loss_layer2 + maps_cov_loss_layer3
 
-        #     loss = loss + (1 - self.cfg.MODEL.ALPHA) * (
-        #         maps_inv_loss + maps_var_loss + maps_cov_loss
-        #     )
-        #     self.log('local_inv_loss', maps_inv_loss)
-        #     self.log('local_var_loss', maps_var_loss)
-        #     self.log('local_cov_loss', maps_cov_loss)
-        #     self.log('local_loss', loss) # its also contain global loss
+            loss = loss + (1 - self.cfg.MODEL.ALPHA) * (
+                maps_inv_loss + maps_var_loss + maps_cov_loss
+            )
+            self.log('local_inv_loss', maps_inv_loss)
+            self.log('local_var_loss', maps_var_loss)
+            self.log('local_cov_loss', maps_cov_loss)
+            self.log('local_loss', loss) # its also contain global loss
 
         return loss
-
-    def extract_feature_pipeline(self):
-        # ============ preparing data ... ============
-        dataset_train = UCFReturnIndexDataset(cfg=self.cfg, mode="train", num_retries=10)
-        dataset_val = UCFReturnIndexDataset(cfg=self.cfg, mode="val", num_retries=10)
-
-        train_labels = torch.tensor([s for s in dataset_train._labels]).long().cuda()
-        test_labels = torch.tensor([s for s in dataset_val._labels]).long().cuda()
-
-        data_loader_train = torch.utils.data.DataLoader(
-            dataset_train,
-            batch_size=self.cfg.TESTsvt.batch_size_per_gpu,
-            num_workers=self.cfg.TESTsvt.num_workers,
-            pin_memory=True,
-            drop_last=False,
-        )
-        data_loader_val = torch.utils.data.DataLoader(
-            dataset_val,
-            batch_size=self.cfg.TESTsvt.batch_size_per_gpu,
-            num_workers=self.cfg.TESTsvt.num_workers,
-            pin_memory=True,
-            drop_last=False,
-        )
-
-        model = self.backbone.backbone
-        model.cuda()
-        model.eval()
-
-        # ============ extract features ... ============
-        print("Extracting features for train set...")
-        train_features = self.extract_features(model, data_loader_train)
-        print("Extracting features for val set...")
-        test_features = self.extract_features(model, data_loader_val)
-
-        # train_features = torch.cat(train_features)
-        # test_features = torch.cat(test_features)
-
-        train_features = nn.functional.normalize(train_features, dim=1, p=2)
-        test_features = nn.functional.normalize(test_features, dim=1, p=2)
-
-        return train_features, test_features, train_labels, test_labels
-
-    @torch.no_grad()
-    def extract_features(self, model, dataloader):
-        metric_logger = utils.MetricLogger(delimiter="  ")
-        features = None
-        for samples, index in metric_logger.log_every(dataloader, 10):
-            samples = samples.cuda(non_blocking=True)
-            index = index.cuda(non_blocking=True)
-            feats = model(samples).clone()
-
-            # init storage feature matrix
-            if dist.get_rank() == 0 and features is None:
-                features = torch.zeros(len(dataloader.dataset), feats.shape[-1])
-                # if args.use_cuda:
-                features = features.cuda(non_blocking=True)
-                print(f"Storing features into tensor of shape {features.shape}")
-
-            # get indexes from all processes
-            y_all = torch.empty(dist.get_world_size(), index.size(0), dtype=index.dtype, device=index.device)
-            y_l = list(y_all.unbind(0))
-            y_all_reduce = torch.distributed.all_gather(y_l, index, async_op=True)
-            y_all_reduce.wait()
-            index_all = torch.cat(y_l)
-
-            # share features between processes
-            feats_all = torch.empty(
-                dist.get_world_size(),
-                feats.size(0),
-                feats.size(1),
-                dtype=feats.dtype,
-                device=feats.device,
-            )
-            output_l = list(feats_all.unbind(0))
-            output_all_reduce = torch.distributed.all_gather(output_l, feats, async_op=True)
-            output_all_reduce.wait()
-
-            # update storage feature matrix
-            if dist.get_rank() == 0:
-                features.index_copy_(0, index_all, torch.cat(output_l))
-                # else:
-                #     features.index_copy_(0, index_all.cpu(), torch.cat(output_l).cpu())
-        return features
 
     @torch.no_grad()
     def knn_classifier(self, train_features, train_labels, test_features, test_labels, k, T, num_classes=1000):
@@ -486,6 +403,7 @@ class VICRegL(pl.LightningModule):
                 all_val = all_val.cuda()
                 train_labels = self.train_labels.cuda()
                 test_labels = self.test_labels.cuda()
+                
             print("Features are ready!\nStart the k-NN classification.")
             for k in self.cfg.TESTsvt.nb_knn:
                 top1, top5 = self.knn_classifier(all_train, train_labels,

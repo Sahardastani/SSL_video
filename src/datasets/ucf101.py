@@ -58,7 +58,6 @@ class UCF101(torch.utils.data.Dataset):
             self._num_clips = (
                     cfg.TESTsvt.NUM_ENSEMBLE_VIEWS * cfg.TESTsvt.NUM_SPATIAL_CROPS
             )
-
         print("Constructing UCF101 {}...".format(mode))
         self._construct_loader()
 

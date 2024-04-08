@@ -9,7 +9,7 @@ from omegaconf import DictConfig
 class DataConfig:
     PATH_PREFIX: str
     PATH_TO_DATA_DIR: str | Any = None
-    NUM_CLASSES: int = 400
+    NUM_CLASSES: int = 101
     NUM_FRAMES: int = 8
     SAMPLING_RATE: int = 32
     TRAIN_JITTER_SCALES: list = (256, 320)
@@ -153,7 +153,7 @@ class ModelConfig:
     WEIGHT_DECAY: float = 0.05
 
     # The number of classes to predict for the model.
-    NUM_CLASSES: int = 400
+    NUM_CLASSES: int = 101
 
     # The embedding dimension of projector
     MLP: str = "8192-8192-8192"
@@ -219,9 +219,9 @@ class Testsvt:
 
     dump_features: str = ""
 
-    PATH_TO_DATA_DIR: str = "/home/as89480@ens.ad.etsmtl.ca/projects/data/ucf101/knn_splits"
+    PATH_TO_DATA_DIR: str = "/home/as89480@ens.ad.etsmtl.ca/projects/data/ucf101/ucf"
 
-    PATH_PREFIX: str = "/home/as89480@ens.ad.etsmtl.ca/projects/data/ucf101/videos"
+    PATH_PREFIX: str = "/home/as89480@ens.ad.etsmtl.ca/projects/data/ucf101/ucf/videos"
 
     SAMPLING_RATE: int = 8
 

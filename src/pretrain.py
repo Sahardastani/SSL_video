@@ -60,11 +60,11 @@ def run_pretraining(cfg: DictConfig) -> None:
                                                 drop_last=False,)
 
     model = VICRegL(cfg=config)
-    # model.apply(initialize_weights)
+    model.apply(initialize_weights)
     wandb_logger = WandbLogger(name = 'validation', config=OmegaConf.to_container(cfg, resolve=True), 
                                 project=cfg.wandb.project, log_model="all")
     
-    trainer = pl.Trainer(devices= 2, #torch.cuda.device_count(), 
+    trainer = pl.Trainer(devices= 1, #torch.cuda.device_count(), 
                          strategy='ddp_find_unused_parameters_true',
                          max_epochs=cfg.common.epochs,
                          logger=wandb_logger,
@@ -72,7 +72,7 @@ def run_pretraining(cfg: DictConfig) -> None:
 
     wandb_logger.watch(model, log="all")
 
-    trainer.fit(model, train_dataloaders = kinetics_train_loader)#, val_dataloaders = [ucf_train_loader, ucf_val_loader])
+    trainer.fit(model, train_dataloaders = kinetics_train_loader, val_dataloaders = [ucf_train_loader, ucf_val_loader])
     
     if not os.path.exists(cfg['dirs']['model_path']):
         os.makedirs(cfg['dirs']['model_path'])
