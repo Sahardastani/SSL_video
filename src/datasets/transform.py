@@ -737,10 +737,8 @@ class VideoDataAugmentationDINO(object):
         elif from_list:
             image = [x.float() / 255.0 if x.dtype == torch.uint8 else x for x in image]
             crops = [self.global_transform1(image[0]), self.global_transform2(image[1])]
-            locations = [torch.arange(8).unsqueeze(1) for _ in range(2)]
             for local_image in image[2:]:
                 crops.append(self.local_transform(local_image))
-                locations.append(torch.arange(8).unsqueeze(1))
         else:
             if image.dtype == torch.uint8:
                 image = image.float()
@@ -749,4 +747,4 @@ class VideoDataAugmentationDINO(object):
             for _ in range(self.local_crops_number):
                 crops.append(self.local_transform(image))
 
-        return crops, locations
+        return crops

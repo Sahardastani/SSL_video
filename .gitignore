@@ -13,6 +13,13 @@ wandb/
 .hydra/
 models/
 outputs/
+ucf101/
+dataset/
+results/
+localtest1/
+svt/
+SEVERE-BENCHMARK/
+checkpoints_pretraining/
 
 
 # Byte-compiled / optimized / DLL files

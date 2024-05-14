@@ -9,12 +9,12 @@ from omegaconf import DictConfig
 class DataConfig:
     PATH_PREFIX: str
     PATH_TO_DATA_DIR: str | Any = None
-    NUM_CLASSES: int = 400
+    NUM_CLASSES: int = 101
     NUM_FRAMES: int = 8
     SAMPLING_RATE: int = 32
     TRAIN_JITTER_SCALES: list = (256, 320)
     TRAIN_CROP_SIZE: int = 224
-    TEST_CROP_SIZE: int = 224
+    TEST_CROP_SIZE: int = 256
     INPUT_CHANNEL_NUM: list = (3,)
     PIN_MEMORY: bool = True
     NUM_WORKERS: int = 12
@@ -32,7 +32,7 @@ class DataConfig:
     NO_RGB_AUG: bool = False
     RAND_CONV: bool = False
     NO_SPATIAL: bool = False
-    RAND_FR: bool = False
+    RAND_FR: bool = True
     TEMPORAL_EXTENT: int = 8
     DEIT_TRANSFORMS: bool = False
     COLOR_JITTER: float = 0.
@@ -96,7 +96,7 @@ class TestConfig:
     DATASET: str = "kinetics"
 
     # Total mini-batch size
-    BATCH_SIZE: int = 5
+    BATCH_SIZE: int = 8
 
     # Path to the checkpoint to load the initial weight.
     CHECKPOINT_FILE_PATH: str = ""
@@ -147,19 +147,21 @@ class ModelConfig:
     WARMUP_EPOCHS: int = 10
 
     # Optimizer
-    OPTIMIZER: str = "lars"
+    OPTIMIZER: str = "adam"
 
     # Weight decay
     WEIGHT_DECAY: float = 0.05
 
     # The number of classes to predict for the model.
-    NUM_CLASSES: int = 400
+    NUM_CLASSES: int = 101
 
     # The embedding dimension of projector
     MLP: str = "8192-8192-8192"
 
     # The embedding dimension of maps_projector
     MAPS_MLP: str = "512-512-512"
+
+    DIM: list = field(default_factory=lambda: [64, 128, 256, 512])
 
     # The size of each layer
     LAYER_SIZES: list = (1, 1, 1, 1)
@@ -188,6 +190,8 @@ class ModelConfig:
     # Checkpoint frequency
     CHECKPOINT_FREQ: int = 1
 
+    TWO_TOKEN: bool = False
+
 @dataclass
 class DistributedConfig:
     
@@ -201,6 +205,40 @@ class DistributedConfig:
     DIST_URL: str = "env://"
 
 @dataclass
+class Testsvt:
+
+    NUM_SPATIAL_CROPS: int = 1
+
+    NUM_ENSEMBLE_VIEWS: int = 1
+
+    dataset: str = 'ucf101'
+
+    batch_size_per_gpu: int = 128
+
+    num_workers: int = 4
+
+    dump_features: str = ""
+
+    PATH_TO_DATA_DIR: str = "/home/as89480@ens.ad.etsmtl.ca/projects/data/ucf101/ucf"
+
+    PATH_PREFIX: str = "/home/as89480@ens.ad.etsmtl.ca/projects/data/ucf101/ucf/videos"
+
+    SAMPLING_RATE: int = 8
+
+    ENABLE_MULTI_THREAD_DECODE: bool = True
+
+    use_cuda: bool = True
+
+    nb_knn: list = field(default_factory=lambda: [5])
+
+    temperature: float = 0.07
+
+    use_cuda: bool = True
+
+    dist_url: str = "env://"
+    
+
+@dataclass
 class Config:
     DATA: DataConfig
     MULTIGRID: MultiGrid
@@ -208,6 +246,7 @@ class Config:
     TEST: TestConfig
     MODEL: ModelConfig
     DISTRIBUTE: DistributedConfig
+    TESTsvt: Testsvt
 
 
 def build_config(cfg: DictConfig) -> None:
@@ -244,11 +283,13 @@ def build_config(cfg: DictConfig) -> None:
     DISTRIBUTE = DistributedConfig(WORLD_SIZE=cfg['model']['WORLD_SIZE'],
                                    LOCAL_RANK=cfg['model']['LOCAL_RANK'],
                                    DIST_URL=cfg['model']['DIST_URL'])
+    TESTsvt = Testsvt()
 
     config = Config(DATA=DATA,
                     MULTIGRID=MultiGrid(),
                     DATA_LOADER=DATA_LOADER,
                     TEST=TEST,
                     MODEL=MODEL,
-                    DISTRIBUTE=DISTRIBUTE)
+                    DISTRIBUTE=DISTRIBUTE,
+                    TESTsvt=TESTsvt)
     return config

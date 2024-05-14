@@ -5,14 +5,26 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
+import time
+from typing import Any, Optional
 import numpy as np
+from pytorch_lightning.utilities import rank_zero_info
+from pytorch_lightning.utilities.types import STEP_OUTPUT
 import torch
 from torch import nn
 import pytorch_lightning as pl
 import torch.nn.functional as F
-
 from src.models.feature_extractors.r2p1d import OurVideoResNet
 from src.utils import model_utils
+
+import argparse
+import os
+import torch.backends.cudnn as cudnn
+import torch.distributed as dist
+import torch.utils.data
+
+from src.datasets.ucf101 import UCF101
+from src.utils.svt import utils
 
 device = torch.device("cuda")
 
@@ -22,19 +34,31 @@ class VICRegL(pl.LightningModule):
         self.cfg = cfg
         self.embedding_dim = int(cfg.MODEL.MLP.split("-")[-1])
 
+        self.train_ucf = []
+        self.val_ucf = []
+        self.first_epoch = True
+
+        self.dataset_train = UCFReturnIndexDataset(cfg=self.cfg, mode="train", num_retries=10)
+        self.dataset_val = UCFReturnIndexDataset(cfg=self.cfg, mode="val", num_retries=10)
+
+        self.train_labels = torch.tensor([s for s in self.dataset_train._labels]).long().cuda()
+        self.test_labels = torch.tensor([s for s in self.dataset_val._labels]).long().cuda()
+
         if "resnet" in cfg.MODEL.ARCH:
             self.backbone, self.representation_dim = OurVideoResNet(), 512
             norm_layer = "batch_norm"
         else:
             raise Exception(f"Unsupported backbone {cfg.MODEL.ARCH}.")
+        
+        if self.cfg.MODEL.ALPHA < 1.0:
+            dim = self.cfg.MODEL.DIM
 
-        # if self.cfg.MODEL.ALPHA < 1.0:
-        #     self.maps_projector = model_utils.MLP(cfg.MODEL.MAPS_MLP, self.representation_dim, norm_layer)
+            self.maps_projector1 = model_utils.MLP(f'{dim[0]}-{dim[0]}-{dim[0]}', dim[0], norm_layer = "batch_norm")
+            self.maps_projector2 = model_utils.MLP(f'{dim[1]}-{dim[1]}-{dim[1]}', dim[1], norm_layer = "batch_norm")
+            self.maps_projector3 = model_utils.MLP(f'{dim[2]}-{dim[2]}-{dim[2]}', dim[2], norm_layer = "batch_norm")
 
         if self.cfg.MODEL.ALPHA > 0.0:
             self.projector = model_utils.MLP(cfg.MODEL.MLP, self.representation_dim, norm_layer)
-
-        self.classifier = nn.Linear(self.representation_dim, self.cfg.DATA.NUM_CLASSES)
 
     def _vicreg_loss(self, x, y):
         repr_loss = self.cfg.MODEL.INV_COEFF * F.mse_loss(x, y)
@@ -63,113 +87,107 @@ class VICRegL(pl.LightningModule):
         cov_loss = (cov_x[..., non_diag_mask].pow(2).sum(-1) / num_channels) / 2 + (
                 cov_y[..., non_diag_mask].pow(2).sum(-1) / num_channels
         ) / 2
-        cov_loss = cov_loss.mean()
+        cov_loss = cov_loss.mean() 
         cov_loss = self.cfg.MODEL.COV_COEFF * cov_loss
 
         return repr_loss, std_loss, cov_loss
 
     def _local_loss(
-            self, maps_1, maps_2, location_1, location_2
+            self, maps_1, maps_2, index_location_1, index_location_2, org_maps_1, org_maps_2
     ):
         inv_loss = 0.0
         var_loss = 0.0
         cov_loss = 0.0
 
-        # L2 distance based bacthing
-        if self.cfg.MODEL.L2_ALL_MATCHES:
-            num_matches_on_l2 = [None, None]
-        else:
-            num_matches_on_l2 = self.cfg.MODEL.NUM_MATCHES
+        # L2 distance based macthing
 
-        maps_1_filtered, maps_1_nn = neirest_neighbores_on_l2(
-            maps_1, maps_2, num_matches=num_matches_on_l2[0]
-        )
-        maps_2_filtered, maps_2_nn = neirest_neighbores_on_l2(
-            maps_2, maps_1, num_matches=num_matches_on_l2[1]
-        )
-
-        if self.cfg.MODEL.FAST_VC_REG:
-            inv_loss_1 = F.mse_loss(maps_1_filtered, maps_1_nn)
-            inv_loss_2 = F.mse_loss(maps_2_filtered, maps_2_nn)
-        else:
-            inv_loss_1, var_loss_1, cov_loss_1 = self._vicreg_loss(maps_1_filtered, maps_1_nn)
-            inv_loss_2, var_loss_2, cov_loss_2 = self._vicreg_loss(maps_2_filtered, maps_2_nn)
-            var_loss = var_loss + (var_loss_1 / 2 + var_loss_2 / 2)
-            cov_loss = cov_loss + (cov_loss_1 / 2 + cov_loss_2 / 2)
+        m1 = org_maps_1.view(org_maps_1.shape[0], -1, org_maps_1.shape[-1])
+        m2 = org_maps_2.view(org_maps_2.shape[0], -1, org_maps_2.shape[-1])
+        
+        maps_1_filtered, maps_1_nn = neirest_neighbores_on_l2(m1, m2, num_matches=None)
+        maps_2_filtered, maps_2_nn = neirest_neighbores_on_l2(m2, m1, num_matches=None)
+        
+        inv_loss_1, var_loss_1, cov_loss_1 = self._vicreg_loss(maps_1_filtered, maps_1_nn)
+        inv_loss_2, var_loss_2, cov_loss_2 = self._vicreg_loss(maps_2_filtered, maps_2_nn)
 
         inv_loss = inv_loss + (inv_loss_1 / 2 + inv_loss_2 / 2)
+        var_loss = var_loss + (var_loss_1 / 2 + var_loss_2 / 2)
+        cov_loss = cov_loss + (cov_loss_1 / 2 + cov_loss_2 / 2)
 
         # Location based matching
-        # location_1 = location_1.flatten(1, 2)
-        # location_2 = location_2.flatten(1, 2)
+
+        I = torch.arange(index_location_2.shape[0]).long().unsqueeze(-1).repeat(1, index_location_2.size(-1))
         
-        maps_1_filtered, maps_1_nn = neirest_neighbores_on_location(
-            location_1,
-            location_2,
-            maps_1,
-            maps_2,
-            num_matches=self.cfg.MODEL.NUM_MATCHES[0],
-        )
-        maps_2_filtered, maps_2_nn = neirest_neighbores_on_location(
-            location_2,
-            location_1,
-            maps_2,
-            maps_1,
-            num_matches=self.cfg.MODEL.NUM_MATCHES[1],
-        )
+        distances = torch.cdist(index_location_1.unsqueeze(-1).float(), index_location_2.unsqueeze(-1).float(), p=1)
+        current_index_list1 = torch.min(distances, dim=-1)[1]
+        map1_transform = org_maps_1.permute(1, 0, 2, 3)[I, current_index_list1].permute(1, 0, 2, 3)
 
-        if self.cfg.MODEL.FAST_VC_REG:
-            inv_loss_1 = F.mse_loss(maps_1_filtered, maps_1_nn)
-            inv_loss_2 = F.mse_loss(maps_2_filtered, maps_2_nn)
-        else:
-            inv_loss_1, var_loss_1, cov_loss_1 = self._vicreg_loss(maps_1_filtered, maps_1_nn)
-            inv_loss_2, var_loss_2, cov_loss_2 = self._vicreg_loss(maps_2_filtered, maps_2_nn)
-            var_loss = var_loss + (var_loss_1 / 2 + var_loss_2 / 2)
-            cov_loss = cov_loss + (cov_loss_1 / 2 + cov_loss_2 / 2)
+        distances = torch.cdist(index_location_2.unsqueeze(-1).float(), index_location_1.unsqueeze(-1).float(), p=1)
+        current_index_list2 = torch.min(distances, dim=-1)[1]
+        map2_transform = org_maps_2.permute(1, 0, 2, 3)[I, current_index_list2].permute(1, 0, 2, 3)
 
-        inv_loss = inv_loss + (inv_loss_1 / 2 + inv_loss_2 / 2)
+        # 0, 1
+        first_map1 = map1_transform.permute(1, 0, 2, 3)[0:8].reshape(-1, 1, map1_transform.shape[-1])
+        first_map2 = map2_transform.permute(1, 0, 2, 3)[0:8].reshape(-1, 1, map2_transform.shape[-1])
+
+        first_org1 = org_maps_1.permute(1, 0, 2, 3)[0:8].reshape(-1, 1, org_maps_1.shape[-1])
+        first_org2 = org_maps_2.permute(1, 0, 2, 3)[0:8].reshape(-1, 1, org_maps_2.shape[-1])
+
+        first_inv_loss_1, first_var_loss_1, first_cov_loss_1 = self._vicreg_loss(first_map1, first_org2)
+        first_inv_loss_2, first_var_loss_2, first_cov_loss_2 = self._vicreg_loss(first_map2, first_org1)
+
+        first_inv = first_inv_loss_1 / 2 + first_inv_loss_2 / 2
+        first_var = first_var_loss_1/ 2 + first_var_loss_2 / 2
+        first_cov = first_cov_loss_1 / 2 + first_cov_loss_2 / 2
+
+        # 1, 0
+        second_map1 = map1_transform.permute(1, 0, 2, 3)[8:16].reshape(-1, 1, map1_transform.shape[-1])
+        second_map2 = map2_transform.permute(1, 0, 2, 3)[8:16].reshape(-1, 1, map2_transform.shape[-1])
+        
+        second_org1 = org_maps_1.permute(1, 0, 2, 3)[8:16].reshape(-1, 1, org_maps_1.shape[-1])
+        second_org2 = org_maps_2.permute(1, 0, 2, 3)[8:16].reshape(-1, 1, org_maps_2.shape[-1])
+
+        second_inv_loss_1, second_var_loss_1, second_cov_loss_1 = self._vicreg_loss(second_map1, second_org2)
+        second_inv_loss_2, second_var_loss_2, second_cov_loss_2 = self._vicreg_loss(second_map2, second_org1)
+
+        second_inv = second_inv_loss_1 / 2 + second_inv_loss_2 / 2
+        second_var = second_var_loss_1 / 2 + second_var_loss_2 / 2
+        second_cov = second_cov_loss_1 / 2 + second_cov_loss_2 / 2
+
+
+        inv_loss = inv_loss + (first_inv / 2 + second_inv / 2)
+        var_loss = var_loss + (first_var / 2 + second_var / 2)
+        cov_loss = cov_loss + (first_cov / 2 + second_cov / 2)
 
         return inv_loss, var_loss, cov_loss
 
-    def local_loss(self, maps_embedding, locations):
-        num_views = len(maps_embedding)
+    def local_loss(self, maps_embedding, index_locations):
         inv_loss = 0.0
         var_loss = 0.0
         cov_loss = 0.0
-        iter_ = 0
-        for i in range(2):
-            for j in np.delete(np.arange(np.sum(num_views)), i):
-                inv_loss_this, var_loss_this, cov_loss_this = self._local_loss(
-                    maps_embedding[i], maps_embedding[j], locations[i], locations[j],
-                )
-                inv_loss = inv_loss + inv_loss_this
-                var_loss = var_loss + var_loss_this
-                cov_loss = cov_loss + cov_loss_this
-                iter_ += 1
+        # iter_ = 0
+        
+        for k in range(maps_embedding[0].shape[0]):
+            each_frame_maps_embedding = [maps_embedding[0][k], maps_embedding[1][k]]
 
-        if self.cfg.MODEL.FAST_VC_REG:
-            inv_loss = self.cfg.MODEL.INV_COEFF * inv_loss / iter_
-            var_loss = 0.0
-            cov_loss = 0.0
-            iter_ = 0
-            for i in range(num_views):
-                x = model_utils.gather_center(maps_embedding[i])
-                std_x = torch.sqrt(x.var(dim=0) + 0.0001)
-                var_loss = var_loss + torch.mean(torch.relu(1.0 - std_x))
-                x = x.permute(1, 0, 2)
-                *_, sample_size, num_channels = x.shape
-                non_diag_mask = ~torch.eye(num_channels, device=x.device, dtype=torch.bool)
-                x = x - x.mean(dim=-2, keepdim=True)
-                cov_x = torch.einsum("...nc,...nd->...cd", x, x) / (sample_size - 1)
-                cov_loss = cov_x[..., non_diag_mask].pow(2).sum(-1) / num_channels
-                cov_loss = cov_loss + cov_loss.mean()
-                iter_ = iter_ + 1
-            var_loss = self.cfg.MODEL.VAR_COEFF * var_loss / iter_
-            cov_loss = self.cfg.MODEL.COV_COEFF * cov_loss / iter_
-        else:
-            inv_loss = inv_loss / iter_
-            var_loss = var_loss / iter_
-            cov_loss = cov_loss / iter_
+            each_frame_maps_embedding_1 = torch.cat([each_frame_maps_embedding[0],  each_frame_maps_embedding[1]], 0)
+            each_frame_maps_embedding_2 = torch.cat([each_frame_maps_embedding[1],  each_frame_maps_embedding[0]], 0)
+
+            index_locations_1 = torch.cat([index_locations[0], index_locations[1]], 0)
+            index_locations_2 = torch.cat([index_locations[1], index_locations[0]], 0)
+
+            maps_embedding_1 = torch.cat([maps_embedding[0], maps_embedding[1]], 1)
+            maps_embedding_2 = torch.cat([maps_embedding[1], maps_embedding[0]], 1)
+
+            inv_loss_this, var_loss_this, cov_loss_this = self._local_loss(
+                each_frame_maps_embedding_1, each_frame_maps_embedding_2, 
+                index_locations_1, index_locations_2, 
+                maps_embedding_1, maps_embedding_2
+            )
+
+            inv_loss = inv_loss + inv_loss_this
+            var_loss = var_loss + var_loss_this
+            cov_loss = cov_loss + cov_loss_this
 
         return inv_loss, var_loss, cov_loss
 
@@ -200,121 +218,76 @@ class VICRegL(pl.LightningModule):
 
         return inv_loss, var_loss, cov_loss
 
-    def compute_metrics(self, outputs, is_val= False):
-        def correlation_metric(x):
-            x_centered = (x - x.mean(dim=0)) / (x.std(dim=0) + 1e-05)
-            return torch.mean(
-                model_utils.off_diagonal((x_centered.T @ x_centered) / (x.size(0) - 1))
-            )
-
-        def std_metric(x):
-            x = F.normalize(x, p=2, dim=1)
-            return torch.mean(x.std(dim=0))
-
-        representation = model_utils.batch_all_gather(outputs["representation"][0])
-        corr = correlation_metric(representation)
-        stdrepr = std_metric(representation)
-
-        if self.cfg.MODEL.ALPHA > 0.0:
-            embedding = model_utils.batch_all_gather(outputs["embedding"][0])
-            core = correlation_metric(embedding)
-            stdemb = std_metric(embedding)
-            if is_val:
-                self.log('eval_stdr', stdrepr)
-                self.log('eval_stde', stdemb)
-                self.log('eval_corr', corr)
-                self.log('eval_core', core)
-                # return dict(eval_stdr=stdrepr, eval_stde=stdemb, eval_corr=corr, eval_core=core)
-            else:
-                self.log('train_stdr', stdrepr)
-                self.log('train_stde', stdemb)
-                self.log('train_corr', corr)
-                self.log('train_core', core)
-                # return dict(train_stdr=stdrepr, train_stde=stdemb, train_corr=corr, train_core=core)
-
-        return dict(stdr=stdrepr, corr=corr)
-
     def forward_networks(self, inputs, is_val):
         outputs = {
             "representation": [],
             "embedding": [],
-            "maps_embedding": [],
-            "logits": [],
-            "logits_val": [],
+            "layer_1": [],
+            "layer_2": [],
+            "layer_3": [],
+            "index_layer1": [],
+            "index_layer2": [],
+            "index_layer3": [],
         }
-        for x in inputs[0:2]:
+        
+        # finding out the index of frames in the original video after each layer in resnet
+        conv_info = self.backbone.extract_conv_info()
+        for x in inputs[1]:
+            current_input = x
+            outputs["index_layer1"].append(x)
+            for layer, info in conv_info.items():
+                for iter, (kernel_size, stride, padding) in enumerate(info):
+                    kernel = torch.ones(1, 1, kernel_size).to("cuda")
+                    
+                    row = current_input.view(8, 1, -1)
+                    padded_row = torch.cat([row[:, :, 0:1].repeat(1, 1, padding), row, row[:, :, -1:].repeat(1, 1, padding)], dim=2).to(dtype=kernel.dtype)
+                    output_row = F.conv1d(padded_row, kernel, stride=stride)
+                    output_row = output_row / kernel_size
+                    current_input = output_row.squeeze(1)
+
+                    if layer == 'layer2' and iter == len(conv_info['layer2'])-1:
+                        outputs["index_layer2"].append(current_input)
+
+                    if layer == 'layer3' and iter == len(conv_info['layer3'])-1:
+                        outputs["index_layer3"].append(current_input)
+
+        # creating local features for representation after each layer of encoder
+        for x in inputs[0][0:2]:
             out = self.backbone(x)
-            maps = out.layer4_out.flatten(start_dim=2, end_dim=4).permute(0,2,1)
-            representation = out.layer_pool_out.view(-1, 512)
+            layers = [out.layer1_out, out.layer2_out, out.layer3_out]
+
+            representation = out.layer_pool_out.view(-1, out.layer_pool_out.shape[1])
             outputs["representation"].append(representation)
 
+            # Global
             if self.cfg.MODEL.ALPHA > 0.0:
                 embedding = self.projector(representation)
                 outputs["embedding"].append(embedding)
-
+            # Local
             if self.cfg.MODEL.ALPHA < 1.0:
-                layers = [out.layer1_out, out.layer2_out, out.layer3_out, out.layer4_out]
-                representation_dim = [64, 128, 256, 512]
+                pool = nn.AdaptiveAvgPool2d((1,1))
 
                 for index, layer in enumerate(layers):
+                    layer = layer.permute(2,0,1,3,4) #torch.Size([8, 8, 64, 56, 56]) frame, bacth_size
+                    pooled_layer = pool(layer) #torch.Size([8, 8, 64, 1, 1])
+                    flattened_tensors = pooled_layer.flatten(start_dim=3, end_dim=4).permute(0,1,3,2) #torch.Size([8, 8, 1, 64])
+                    num_frames, batch_size, num_loc, embedding_dim = flattened_tensors.shape #torch.Size([8, 8, 1, 64])
+                    flattened_tensors_reshaped = flattened_tensors.view(-1, embedding_dim) #torch.Size([64, 64])
 
-                    split_tensors = torch.split(layer, 1, dim=2) #split the frames
-                    stacked_split_tensors = torch.stack(split_tensors, dim=0) #torch.Size([8, 2, 64, 1, 56, 56])
-                    flattened_tensors = stacked_split_tensors.flatten(start_dim=3, end_dim=5).permute(0,1,3,2) #torch.Size([8, 2, 3136, 64])
-                    num_frames, batch_size, num_loc, embedding_dim = flattened_tensors.shape #torch.Size([8, 2, 3136, 64])
-                    flattened_tensors_reshaped = flattened_tensors.view(-1, num_loc, embedding_dim) #torch.Size([16, 3136, 64])
-
-                    MAPS_MLP = f'{representation_dim[index]}-{representation_dim[index]}-{representation_dim[index]}'
-                    maps_projector = model_utils.MLP(MAPS_MLP, representation_dim[index], norm_layer = "batch_norm").to(device)
-                    breakpoint()
-                    maps_embedding = maps_projector(flattened_tensors_reshaped)
-                    breakpoint()
-                    maps_embedding_reshaped = maps_embedding.view(batch_size, num_frames, num_loc, embedding_dim)
-                    outputs["maps_embedding"].append(maps_embedding_reshaped)
-                    breakpoint()
-
-
-                # for index, layer in enumerate(layers):
-                #     maps_projector = model_utils.MLP(self.cfg.MODEL.MAPS_MLP, representation_dim[index], norm_layer = "batch_norm").to(device)
-
-                #     split_tensors = torch.split(layer, 1, dim=2)
-                #     stacked_split_tensors = torch.stack(split_tensors, dim=0)
-                #     flattened_tensors = stacked_split_tensors.flatten(start_dim=3, end_dim=5).permute(0,1,3,2)
-
-                #     for frame in flattened_tensors:
-                #         batch_size, num_loc, _ = frame.shape #torch.Size([2, 49, 512])
-                #         maps_embedding = maps_projector(frame.flatten(start_dim=0, end_dim=1)) #torch.Size([98, 512])
-                #         maps_embedding = maps_embedding.view(batch_size, num_loc, -1) #torch.Size([2, 49, 512])
-                #         outputs["maps_embedding"].append(maps_embedding)
-                #         breakpoint()
-
-
-            # if self.cfg.MODEL.ALPHA < 1.0:
-            #     batch_size, num_loc, _ = maps.shape #torch.Size([2, 49, 512])
-            #     maps_embedding = self.maps_projector(maps.flatten(start_dim=0, end_dim=1)) #torch.Size([98, 512])
-            #     breakpoint()
-            #     maps_embedding = maps_embedding.view(batch_size, num_loc, -1) #torch.Size([2, 49, 512])
-            #     outputs["maps_embedding"].append(maps_embedding)
-            #     breakpoint()
-
-        #     logits = self.classifier(representation.detach())
-        #     outputs["logits"].append(logits)
-
-        # if is_val:
-        #     _, representation = self.backbone(inputs["val_view"])
-        #     val_logits = self.classifier(representation.detach())
-        #     outputs["logits_val"].append(val_logits)
+                    if index == 0:
+                        maps_embedding = self.maps_projector1(flattened_tensors_reshaped).to(device) #torch.Size([64, 64])
+                    elif index == 1:
+                        maps_embedding = self.maps_projector2(flattened_tensors_reshaped).to(device)
+                    elif index == 2:
+                        maps_embedding = self.maps_projector3(flattened_tensors_reshaped).to(device)
+                    
+                    maps_embedding = maps_embedding.view(num_frames, batch_size, num_loc, embedding_dim) #torch.Size([8, 8, 1, 64])
+                    outputs[f"layer_{index+1}"].append(maps_embedding)
 
         return outputs
 
     def forward(self, inputs, is_val=False, backbone_only=False):
-        # if backbone_only:
-        #     maps, _ = self.backbone(inputs)
-        #     return maps
-
-        outputs = self.forward_networks(inputs[0], is_val)
-        with torch.no_grad():
-            self.compute_metrics(outputs, is_val)
+        outputs = self.forward_networks(inputs, is_val)
         loss = 0.0
 
         # Global criterion
@@ -323,81 +296,132 @@ class VICRegL(pl.LightningModule):
                 outputs["embedding"]
             )
             loss = loss + self.cfg.MODEL.ALPHA * (inv_loss + var_loss + cov_loss)
-            if is_val:
-                self.log('eval_inv_l', inv_loss)
-                self.log('eval_var_l', var_loss)
-                self.log('eval_cov_l', cov_loss)
-                self.log('eval_loss', loss)
-                # log.update(dict(eval_inv_l=inv_loss, eval_var_l=var_loss, eval_cov_l=cov_loss, eval_loss=loss))
-            else:
-                self.log('train_inv_l', inv_loss)
-                self.log('train_var_l', var_loss)
-                self.log('train_cov_l', cov_loss)
-                self.log('train_loss', loss)
-                # log.update(dict(train_inv_l=inv_loss, train_var_l=var_loss, train_cov_l=cov_loss, train_loss=loss))
+
+            self.log('global_inv_loss', inv_loss)
+            self.log('global_var_loss', var_loss)
+            self.log('global_cov_loss', cov_loss)
+            self.log('global_loss', loss)
             
         # Local criterion
-        # Maps shape: B, C, H, W
-        # With convnext actual maps shape is: B, H * W, C
         if self.cfg.MODEL.ALPHA < 1.0:
-            breakpoint()
-            (
-                maps_inv_loss,
-                maps_var_loss,
-                maps_cov_loss,
-            ) = self.local_loss(
-                outputs["maps_embedding"], inputs[1][0:2]
-            )
-            breakpoint()
-            # outputs["maps_embedding"] : [torch.Size([2, 49, 512]), torch.Size([2, 49, 512])]
-            # inputs[1][0:2]            : [torch.Size([2, 8, 1]), torch.Size([2, 8, 1])]
+            (maps_inv_loss_layer1, maps_var_loss_layer1, maps_cov_loss_layer1) = self.local_loss(outputs["layer_1"], outputs["index_layer1"]) 
+            (maps_inv_loss_layer2, maps_var_loss_layer2, maps_cov_loss_layer2) = self.local_loss(outputs["layer_2"], outputs["index_layer2"]) 
+            (maps_inv_loss_layer3, maps_var_loss_layer3, maps_cov_loss_layer3) = self.local_loss(outputs["layer_3"], outputs["index_layer3"])
+
+            maps_inv_loss = maps_inv_loss_layer1 + maps_inv_loss_layer2 + maps_inv_loss_layer3
+            maps_var_loss = maps_var_loss_layer1 + maps_var_loss_layer2 + maps_var_loss_layer3
+            maps_cov_loss = maps_cov_loss_layer1 + maps_cov_loss_layer2 + maps_cov_loss_layer3
 
             loss = loss + (1 - self.cfg.MODEL.ALPHA) * (
                 maps_inv_loss + maps_var_loss + maps_cov_loss
             )
-            self.log('minv_l', maps_inv_loss)
-            self.log('mvar_l', maps_var_loss)
-            self.log('mcov_l', maps_cov_loss)
-            # log.update(dict(minv_l=maps_inv_loss, mvar_l=maps_var_loss, mcov_l=maps_cov_loss))
-
-        # # Online classification
-
-        # labels = inputs["labels"]
-        # classif_loss = F.cross_entropy(outputs["logits"][0], labels)
-        # acc1, acc5 = model_utils.accuracy(outputs["logits"][0], labels, topk=(1, 5))
-        # loss = loss + classif_loss
-        # log.update(dict(cls_l=classif_loss, top1=acc1, top5=acc5, l=loss))
-        # if is_val:
-        #     classif_loss_val = F.cross_entropy(outputs["logits_val"][0], labels)
-        #     acc1_val, acc5_val = model_utils.accuracy(
-        #         outputs["logits_val"][0], labels, topk=(1, 5)
-        #     )
-        #     log.update(
-        #         dict(clsl_val=classif_loss_val, top1_val=acc1_val, top5_val=acc5_val,)
-        #     )
+            self.log('local_inv_loss', maps_inv_loss)
+            self.log('local_var_loss', maps_var_loss)
+            self.log('local_cov_loss', maps_cov_loss)
+            self.log('local_loss', loss) # its also contain global loss
 
         return loss
 
-    def training_step(self, train_batch, batch_idx):
-        x = train_batch
+    @torch.no_grad()
+    def knn_classifier(self, train_features, train_labels, test_features, test_labels, k, T, num_classes=1000):
+        top1, top5, total = 0.0, 0.0, 0
+        train_features = train_features.t()
+        num_test_images, num_chunks = test_labels.shape[0], 100
+        imgs_per_chunk = num_test_images // num_chunks
+        retrieval_one_hot = torch.zeros(k, num_classes).cuda()
+        for idx in range(0, num_test_images, imgs_per_chunk):
+            # get the features for test images
+            features = test_features[
+                idx : min((idx + imgs_per_chunk), num_test_images), :
+            ]
+            targets = test_labels[idx : min((idx + imgs_per_chunk), num_test_images)]
+            batch_size = targets.shape[0]
+
+            # calculate the dot product and compute top-k neighbors
+            similarity = torch.mm(features, train_features)
+            distances, indices = similarity.topk(k, largest=True, sorted=True)
+            candidates = train_labels.view(1, -1).expand(batch_size, -1)
+            retrieved_neighbors = torch.gather(candidates, 1, indices)
+
+            retrieval_one_hot.resize_(batch_size * k, num_classes).zero_()
+            retrieval_one_hot.scatter_(1, retrieved_neighbors.view(-1, 1), 1)
+            distances_transform = distances.clone().div_(T).exp_()
+            probs = torch.sum(
+                torch.mul(
+                    retrieval_one_hot.view(batch_size, -1, num_classes),
+                    distances_transform.view(batch_size, -1, 1),
+                ),
+                1,
+            )
+            _, predictions = probs.sort(1, True)
+
+            # find the predictions that match the target
+            correct = predictions.eq(targets.data.view(-1, 1))
+            top1 = top1 + correct.narrow(1, 0, 1).sum().item()
+            top5 = top5 + correct.narrow(1, 0, 5).sum().item()
+            total += targets.size(0)
+        top1 = top1 * 100.0 / total
+        top5 = top5 * 100.0 / total
+        return top1, top5
+
+    def training_step(self, x):
         loss = self.forward(x)
         return loss
     
-    # def validation_step(self, val_batch, batch_idx):
-    #     x = val_batch
-    #     loss = self.forward(x[0])
-    #     return loss
+    def validation_step(self, batch, batch_idx, dataloader_idx=0):
+
+        model = self.backbone.backbone
+        model.cuda()
+        model.eval()
+        
+        if dataloader_idx == 0:
+            # train
+            feats = model(batch[0])
+            self.train_ucf.append(feats)
+
+        elif dataloader_idx == 1:
+            # val
+            feats = model(batch[0])
+            self.val_ucf.append(feats)
+
+    def on_validation_epoch_end(self):
+        
+        if self.first_epoch == True:
+            self.first_epoch = False
+        else:
+            train_features = torch.cat(self.train_ucf)
+            test_features = torch.cat(self.val_ucf)
+            
+            train_features = nn.functional.normalize(train_features, dim=1, p=2)
+            test_features = nn.functional.normalize(test_features, dim=1, p=2)
+            
+            all_train = self.all_gather(train_features).reshape(-1, 400)
+            all_val = self.all_gather(test_features).reshape(-1, 400)
+
+            if self.cfg.TESTsvt.use_cuda:
+                all_train = all_train.cuda()
+                all_val = all_val.cuda()
+                train_labels = self.train_labels.cuda()
+                test_labels = self.test_labels.cuda()
+                
+            print("Features are ready!\nStart the k-NN classification.")
+            for k in self.cfg.TESTsvt.nb_knn:
+                top1, top5 = self.knn_classifier(all_train, train_labels,
+                    all_val, test_labels, k, self.cfg.TESTsvt.temperature)
+                print(f"{k}-NN classifier result: Top1: {top1}, Top5: {top5}")
+                self.log('top1', top1, sync_dist=True)
+                self.log('top5', top5, sync_dist=True)
+
+        self.train_ucf.clear()
+        self.val_ucf.clear()
     
     def configure_optimizers(self):
-        if self.cfg.MODEL.OPTIMIZER == "adamw":
-            optimizer = torch.optim.AdamW(self.parameters(), lr=1e-3)
-            return optimizer
-        elif self.cfg.MODEL.OPTIMIZER == "adam":
-            optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        if self.cfg.MODEL.OPTIMIZER == "adam":
+            optimizer = torch.optim.Adam(self.parameters(), lr=3e-4)
+            self.log('lr', 3e-4)
             return optimizer
         else:
             print(f"{self.cfg.MODEL.OPTIMIZER} is not in the optimizer list.")
-
 
 def batched_index_select(input, dim, index):
     for ii in range(1, len(input.shape)):
@@ -409,13 +433,12 @@ def batched_index_select(input, dim, index):
     index = index.expand(expanse)
     return torch.gather(input, dim, index)
 
-
 def neirest_neighbores(input_maps, candidate_maps, distances, num_matches):
     batch_size = input_maps.size(0)
-
+    
     if num_matches is None or num_matches == -1:
         num_matches = input_maps.size(1)
-
+    
     topk_values, topk_indices = distances.topk(k=1, largest=False)
     topk_values = topk_values.squeeze(-1)
     topk_indices = topk_indices.squeeze(-1)
@@ -429,6 +452,7 @@ def neirest_neighbores(input_maps, candidate_maps, distances, num_matches):
             for i in range(batch_size)
         ]
     )
+    
     topk_indices_selected = topk_indices.masked_select(mask)
     topk_indices_selected = topk_indices_selected.reshape(batch_size, num_matches)
 
@@ -438,6 +462,7 @@ def neirest_neighbores(input_maps, candidate_maps, distances, num_matches):
         .repeat(batch_size, 1)
         .to(topk_values.device)
     )
+    
     indices_selected = indices.masked_select(mask)
     indices_selected = indices_selected.reshape(batch_size, num_matches)
 
@@ -445,9 +470,7 @@ def neirest_neighbores(input_maps, candidate_maps, distances, num_matches):
     filtered_candidate_maps = batched_index_select(
         candidate_maps, 1, topk_indices_selected
     )
-
     return filtered_input_maps, filtered_candidate_maps
-
 
 def neirest_neighbores_on_l2(input_maps, candidate_maps, num_matches):
     """
@@ -457,19 +480,7 @@ def neirest_neighbores_on_l2(input_maps, candidate_maps, num_matches):
     distances = torch.cdist(input_maps, candidate_maps)
     return neirest_neighbores(input_maps, candidate_maps, distances, num_matches)
 
-
-def neirest_neighbores_on_location(
-        input_location, candidate_location, input_maps, candidate_maps, num_matches
-):
-    """
-    input_location: (B, H * W, 2)
-    candidate_location: (B, H * W, 2)
-    input_maps: (B, H * W, C)
-    candidate_maps: (B, H * W, C)
-    """
-    distances = torch.cdist(input_location.float(), candidate_location.float())
-    return neirest_neighbores(input_maps, candidate_maps, distances, num_matches)
-
-
-def exclude_bias_and_norm(p):
-    return p.ndim == 1
+class UCFReturnIndexDataset(UCF101):
+    def __getitem__(self, idx):
+        img, _, _, _ = super(UCFReturnIndexDataset, self).__getitem__(idx)
+        return img, idx

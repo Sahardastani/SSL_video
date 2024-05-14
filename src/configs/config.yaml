@@ -6,22 +6,18 @@ defaults:
   - dirs: my_dir
 
 wandb:
-  mode: offline
-  project: video_ssl_project
+  mode: online
+  project: VICRegL_video
   entity: null
-  name: localtest1
-  group: ResNet 
-  tags: null 
-  notes: null 
 
 initialization:
   path_to_checkpoint: null 
 
 common:
   device: "cuda"
-  batch_size: 2
-  epochs: 1
-  seed: 100
+  num_workers: 4
+  batch_size: 8
+  epochs: 100
 
 split: 'train'
 
